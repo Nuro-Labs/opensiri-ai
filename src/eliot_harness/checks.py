@@ -23,7 +23,7 @@ def main() -> None:
     assert "PERMISSIONS" in ctx
     obs = make_observation("Open Notes", "Desktop", 'AXDesktop "Desktop" id=1', "none", ctx)
     assert "TASK: Open Notes" in obs and "PERSONAL_CONTEXT" in obs
-    audit = Path(tempfile.gettempdir()) / "eliot_harness_audit.jsonl"
+    audit = Path("/tmp/eliot_harness_audit.jsonl")
     append_audit(audit, {"token": "sk-test-secret"})
     assert "sk-test" not in audit.read_text()
     print("eliot-harness checks: PASS")
