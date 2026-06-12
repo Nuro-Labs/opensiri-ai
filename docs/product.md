@@ -2,9 +2,9 @@
 
 Internal target: Siri-class local personal assistant.
 
-Public wording: open-source Mac personal assistant harness.
+Working product name: opensiri-ai.
 
-Avoid using Apple's Siri mark as a product name.
+Public wording: opensiri-ai, an open-source Mac personal assistant harness.
 
 ## Principles
 

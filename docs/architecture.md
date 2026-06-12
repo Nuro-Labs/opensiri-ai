@@ -1,8 +1,8 @@
-# Eliot Harness Architecture
+# opensiri-ai Architecture
 
 ## Goal
 
-Build a Siri-class personal Mac assistant without pretending the model is the safety boundary.
+Build opensiri-ai: a Siri-class personal Mac assistant without pretending the model is the safety boundary.
 
 The harness owns:
 

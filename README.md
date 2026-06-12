@@ -1,6 +1,6 @@
-# Eliot Harness
+# opensiri-ai
 
-Eliot Harness is the reference runtime for building a Siri-class local Mac assistant with Eliot as the action model and Hypersave as the optional personal-context memory layer.
+opensiri-ai is the reference runtime for building a Siri-class local Mac assistant with Eliot as the action model and Hypersave as the optional personal-context memory layer.
 
 The harness is the safety boundary. The model proposes one tool call per turn; the harness compiles context, enforces permissions, intercepts risky actions, writes audit logs, and executes approved tools.
 
@@ -16,7 +16,6 @@ The harness is the safety boundary. The model proposes one tool call per turn; t
 - Not a claim that the model is safe by itself.
 - Not a personal-context index by default.
 - Not affiliated with Apple.
-- Not a product named Siri. `Open Siri AI` is treated as an internal target phrase only.
 
 ## Core Loop
 
@@ -61,7 +60,7 @@ export HYPERSAVE_API_KEY="..."
 
 ## Public Positioning
 
-Use: “open-source Mac personal assistant harness.”
+Use: “opensiri-ai, an open-source Mac personal assistant harness.”
 
 Avoid: product claims implying parity with Apple Siri, full personal context, or autonomous safety without the guard.
 
