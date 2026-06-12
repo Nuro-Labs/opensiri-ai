@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 
 from .connectors.memory import MemoryConnector
+from . import mac_ax
 from .schema import Action
 
 
@@ -26,6 +27,8 @@ class Executor:
             return ExecutionResult(str(args.get("summary", "done")), terminal=True)
         if name == "ask_user":
             return ExecutionResult(f"user approval requested: {args.get('question', '')}")
+        if name == "open_app":
+            return ExecutionResult(mac_ax.open_app(str(args.get("name", ""))))
         if name == "run_shell":
             cmd = str(args.get("cmd", ""))
             r = subprocess.run(["/bin/zsh", "-c", cmd], capture_output=True, text=True, timeout=self.shell_timeout)
@@ -39,4 +42,8 @@ class Executor:
             return ExecutionResult(self.memory.ask(str(args.get("query", ""))) if self.memory else "memory unavailable")
         if name == "memory_save":
             return ExecutionResult(self.memory.save(str(args.get("content", "")), str(args.get("source", "eliot")), str(args.get("sensitivity", "medium"))) if self.memory else "memory unavailable")
+        if name == "read":
+            return ExecutionResult("read is available in the full Mac executor; generic executor has no UI element map")
+        if name in ("click", "type"):
+            return ExecutionResult(f"{name} requires a live Accessibility element map")
         return ExecutionResult(f"not implemented by generic executor: {name}")

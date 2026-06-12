@@ -48,7 +48,8 @@ eliot-harness \
   --model-url http://localhost:8081 \
   --model-name default_model \
   --task "Open Notes and tell me whether a note list is visible." \
-  --approval deny
+  --approval deny \
+  --live-ax
 ```
 
 Configure Hypersave only when you want personal context:

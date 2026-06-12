@@ -15,6 +15,7 @@ from .model import EliotModelClient
 from .prompt import ELIOT_SYSTEM
 from .schema import make_observation
 from .transcript import Transcript
+from . import mac_ax
 
 
 class HarnessRuntime:
@@ -25,11 +26,14 @@ class HarnessRuntime:
         self.approval = approval or DenyAllApproval()
         self.audit_path = audit_path
 
-    def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None) -> Transcript:
+    def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None, live_ax: bool = False) -> Transcript:
         transcript = Transcript(task=task)
         messages: list[dict[str, Any]] = [{"role": "system", "content": ELIOT_SYSTEM}]
         result = "none"
         for turn in range(max_turns):
+            if live_ax:
+                snap = mac_ax.observe()
+                app, ui_tree = snap.app_name, snap.tree_text
             ctx = self.context.compile(task).render()
             obs = make_observation(task, app, ui_tree, result, ctx)
             messages.append({"role": "user" if turn == 0 else "tool", "content": obs})

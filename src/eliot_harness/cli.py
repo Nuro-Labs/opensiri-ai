@@ -23,6 +23,7 @@ def main() -> None:
     ap.add_argument("--audit-log", default="results/audit.jsonl")
     ap.add_argument("--approval", choices=["deny", "console", "yes"], default="deny")
     ap.add_argument("--enable-memory", action="store_true")
+    ap.add_argument("--live-ax", action="store_true", help="observe the live macOS Accessibility tree each turn")
     args = ap.parse_args()
 
     memory_client = HypersaveClient.from_env() if args.enable_memory else None
@@ -36,7 +37,7 @@ def main() -> None:
         approval=approval,
         audit_path=args.audit_log,
     )
-    tr = runtime.run(args.task, transcript_path=args.transcript)
+    tr = runtime.run(args.task, transcript_path=args.transcript, live_ax=args.live_ax)
     print(tr.turns[-1]["result"] if tr.turns else "no result")
 
 
