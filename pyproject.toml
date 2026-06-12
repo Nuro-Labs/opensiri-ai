@@ -1,0 +1,12 @@
+[project]
+name = "eliot-harness"
+version = "0.1.0"
+description = "Reference harness for Eliot Mac agent and Hypersave personal context"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+mac = ["pyobjc-framework-ApplicationServices", "pyobjc-framework-Cocoa"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
