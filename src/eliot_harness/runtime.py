@@ -30,9 +30,10 @@ class HarnessRuntime:
         transcript = Transcript(task=task)
         messages: list[dict[str, Any]] = [{"role": "system", "content": ELIOT_SYSTEM}]
         result = "none"
+        target_app: str | None = None
         for turn in range(max_turns):
             if live_ax:
-                snap = mac_ax.observe()
+                snap = mac_ax.observe(target_app)
                 app, ui_tree = snap.app_name, snap.tree_text
             ctx = self.context.compile(task).render()
             obs = make_observation(task, app, ui_tree, result, ctx)
@@ -57,6 +58,8 @@ class HarnessRuntime:
                     append_audit(self.audit_path, {"event": "guard_block", "record": rec})
                     result = 'user: "No — blocked by safety guard."'
                     continue
+            if action.name == "open_app":
+                target_app = str(action.args.get("name", "")) or target_app
             executed = self.executor.execute(action)
             rec["result"] = executed.output[:1000]
             transcript.add(rec)

@@ -53,6 +53,9 @@ class ContextCompiler:
             if isinstance(values, list):
                 for item in values[:5]:
                     text = item.get("content") or item.get("text") or item.get("summary") or str(item)
-                    lines.append(str(text)[:300])
+                    s = str(text).strip()
+                    if not s or "undefined" in s.lower():
+                        continue
+                    lines.append(s[:300])
                 break
         return lines[:5]

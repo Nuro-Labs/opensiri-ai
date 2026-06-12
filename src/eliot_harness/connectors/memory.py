@@ -25,7 +25,10 @@ class MemoryConnector(Connector):
             if isinstance(vals, list):
                 for item in vals[:5]:
                     text = item.get("content") or item.get("text") or item.get("summary") or str(item)
-                    out.append(ConnectorResult(text=str(text)[:300], metadata={"source": key}))
+                    s = str(text).strip()
+                    if not s or "undefined" in s.lower():
+                        continue
+                    out.append(ConnectorResult(text=s[:300], metadata={"source": key}))
                 break
         return out
 

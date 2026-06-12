@@ -32,13 +32,28 @@ def open_app(name: str) -> str:
     return "ok" if r.returncode == 0 else f"error: {r.stderr.strip()}"
 
 
-def observe() -> Snapshot:
+def _running_app(name: str):
+    try:
+        import AppKit
+    except Exception:
+        return None
+    target = name.lower().strip()
+    for app in AppKit.NSWorkspace.sharedWorkspace().runningApplications():
+        ln = (app.localizedName() or "").lower()
+        if ln == target or target in ln or ln in target:
+            return app
+    return None
+
+
+def observe(target_app: str | None = None) -> Snapshot:
     try:
         import ApplicationServices as AS
         import AppKit
     except Exception:
         return Snapshot("Desktop", 'AXDesktop "Desktop" id=1', {})
-    app = AppKit.NSWorkspace.sharedWorkspace().frontmostApplication()
+    app = _running_app(target_app) if target_app else None
+    if app is None:
+        app = AppKit.NSWorkspace.sharedWorkspace().frontmostApplication()
     name, pid = app.localizedName(), app.processIdentifier()
     app_el = AS.AXUIElementCreateApplication(pid)
     lines: list[str] = []
