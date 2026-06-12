@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from eliot_harness.audit import append_audit
+from eliot_harness.context import ContextCompiler
 from eliot_harness.guard import classify
+from eliot_harness.model import EliotModelClient
+from eliot_harness.permissions import PermissionState
+from eliot_harness.schema import normalize_action
 
 
 def test_guard_blocks_delete():
@@ -19,3 +23,19 @@ def test_audit_redacts_secret():
     p = Path("/tmp/eliot_harness_test_audit.jsonl")
     append_audit(p, {"token": "sk-test-secret"})
     assert "sk-test" not in p.read_text()
+
+
+def test_normalize_action_rejects_unknown():
+    assert normalize_action({"name": "open_app", "args": {"name": "Notes"}}).name == "open_app"
+    assert normalize_action({"name": "bad", "args": {}}) is None
+
+
+def test_context_compiler_renders_permissions():
+    ctx = ContextCompiler(PermissionState()).compile("hello").render()
+    assert "PERMISSIONS" in ctx
+
+
+def test_model_parse_action_structured():
+    client = EliotModelClient()
+    msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}
+    assert client._parse_action(msg).args["name"] == "Notes"

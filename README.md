@@ -42,6 +42,16 @@ pip install -e .
 python -m eliot_harness.checks
 ```
 
+Run the harness against an Eliot-compatible OpenAI server:
+
+```bash
+eliot-harness \
+  --model-url http://localhost:8081 \
+  --model-name default_model \
+  --task "Open Notes and tell me whether a note list is visible." \
+  --approval deny
+```
+
 Configure Hypersave only when you want personal context:
 
 ```bash
@@ -65,3 +75,7 @@ Third-party harnesses should copy the guard model:
 - redact secrets in logs
 - keep source permissions opt-in
 - make memory retrieval explicit and scoped
+
+## Repository Status
+
+This repo now includes a working Python runtime loop, OpenAI-compatible model client, deterministic guard, approval providers, transcript/audit logging, Hypersave client, context compiler, and initial connector framework. The Mac Accessibility bridge is optional and imported lazily so core tests run without PyObjC.

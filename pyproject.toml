@@ -5,6 +5,9 @@ description = "Reference harness for Eliot Mac agent and Hypersave personal cont
 requires-python = ">=3.11"
 dependencies = []
 
+[project.scripts]
+eliot-harness = "eliot_harness.cli:main"
+
 [project.optional-dependencies]
 mac = ["pyobjc-framework-ApplicationServices", "pyobjc-framework-Cocoa"]
 

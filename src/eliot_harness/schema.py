@@ -50,3 +50,29 @@ TOOLS = [
     "ask_user",
     "done",
 ]
+
+
+OPENAI_TOOLS = [
+    {"type": "function", "function": {"name": "click", "description": "Click/select a UI element by id.", "parameters": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}}},
+    {"type": "function", "function": {"name": "type", "description": "Type text into a UI element by id.", "parameters": {"type": "object", "properties": {"id": {"type": "integer"}, "text": {"type": "string"}}, "required": ["id", "text"]}}},
+    {"type": "function", "function": {"name": "open_app", "description": "Open or foreground a macOS app.", "parameters": {"type": "object", "properties": {"name": {"type": "string"}}, "required": ["name"]}}},
+    {"type": "function", "function": {"name": "read", "description": "Read a UI element by id.", "parameters": {"type": "object", "properties": {"id": {"type": "integer"}}, "required": ["id"]}}},
+    {"type": "function", "function": {"name": "run_shell", "description": "Run a local shell command through the harness.", "parameters": {"type": "object", "properties": {"cmd": {"type": "string"}}, "required": ["cmd"]}}},
+    {"type": "function", "function": {"name": "web_search", "description": "Use bounded harness web search.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "max_results": {"type": "integer"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "invoke_intent", "description": "Invoke a structured app intent.", "parameters": {"type": "object", "properties": {"app": {"type": "string"}, "intent": {"type": "string"}, "params": {"type": "object"}}, "required": ["app", "intent", "params"]}}},
+    {"type": "function", "function": {"name": "memory_search", "description": "Search approved personal memory.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "memory_ask", "description": "Ask approved personal memory.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}},
+    {"type": "function", "function": {"name": "memory_save", "description": "Save content to memory after approval.", "parameters": {"type": "object", "properties": {"content": {"type": "string"}, "source": {"type": "string"}, "sensitivity": {"type": "string"}}, "required": ["content", "source"]}}},
+    {"type": "function", "function": {"name": "ask_user", "description": "Ask the user for confirmation or clarification.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}},
+    {"type": "function", "function": {"name": "done", "description": "Finish the task.", "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}}},
+]
+
+
+def normalize_action(raw: dict[str, Any] | None) -> Action | None:
+    if not raw or not isinstance(raw, dict):
+        return None
+    name = raw.get("name")
+    args = raw.get("args") or {}
+    if name not in TOOLS or not isinstance(args, dict):
+        return None
+    return Action(name=name, args=args)  # type: ignore[arg-type]
