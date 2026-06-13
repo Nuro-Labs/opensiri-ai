@@ -36,3 +36,7 @@ def manifest_table() -> str:
     for m in MANIFESTS.values():
         lines.append(f"| {m.title} | {', '.join(m.read_capabilities) or '-'} | {', '.join(m.write_capabilities) or '-'} | {m.sensitivity} |")
     return "\n".join(lines)
+
+
+def enabled_sources_text(enabled: list[str]) -> str:
+    return ", ".join(MANIFESTS[x].title for x in enabled if x in MANIFESTS)

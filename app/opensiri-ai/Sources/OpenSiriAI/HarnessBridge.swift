@@ -14,6 +14,8 @@ enum HarnessBridge {
 
         var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", root.appendingPathComponent("results/app-audit.jsonl").path]
         if state.enableMemory { args.append("--enable-memory") }
+        if state.enableFiles { args.append("--enable-files") }
+        if state.enableWeb { args.append("--enable-web") }
         if state.liveAX { args.append("--live-ax") }
 
         let p = Process()

@@ -18,6 +18,13 @@ struct SettingsView: View {
                 Button("Save to Keychain") { keyStatus = Keychain.save(service: "opensiri-ai", account: "hypersave-api-key", value: hypersaveKey) ? "Saved" : "Failed" }
                 Text(keyStatus).foregroundStyle(.secondary)
             }
+            Section("Quick Source Toggles") {
+                Toggle("Hypersave Memory", isOn: $state.enableMemory)
+                Toggle("Files / Finder Selection", isOn: $state.enableFiles)
+                Toggle("Web / World Knowledge", isOn: $state.enableWeb)
+                Toggle("Live Accessibility Tree", isOn: $state.liveAX)
+                Button("Save Source Settings") { state.persist() }
+            }
             Section("Safety") {
                 Text("Destructive, send, payment, credential, and network actions are intercepted before execution.").foregroundStyle(.secondary)
             }

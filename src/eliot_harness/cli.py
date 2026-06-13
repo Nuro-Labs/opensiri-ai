@@ -5,7 +5,10 @@ from __future__ import annotations
 import argparse
 
 from .approval import AutoApprove, ConsoleApproval, DenyAllApproval
+from .config import load_config
 from .connectors.memory import MemoryConnector
+from .connectors.registry import build_registry
+from .connectors.web import WebConnector
 from .context import ContextCompiler
 from .executor import Executor
 from .hypersave import HypersaveClient
@@ -23,17 +26,35 @@ def main() -> None:
     ap.add_argument("--audit-log", default="results/audit.jsonl")
     ap.add_argument("--approval", choices=["deny", "console", "yes"], default="deny")
     ap.add_argument("--enable-memory", action="store_true")
+    ap.add_argument("--enable-web", action="store_true")
+    ap.add_argument("--enable-files", action="store_true")
+    ap.add_argument("--files-root", action="append", default=[])
+    ap.add_argument("--config", default=None)
     ap.add_argument("--live-ax", action="store_true", help="observe the live macOS Accessibility tree each turn")
     args = ap.parse_args()
 
-    memory_client = HypersaveClient.from_env() if args.enable_memory else None
+    cfg = load_config(args.config) if args.config else load_config()
+    if args.enable_web:
+        cfg.network_enabled = True
+        cfg.sources["web"].read = True
+    if args.enable_files:
+        cfg.sources["files"].read = True
+    if args.enable_memory:
+        cfg.sources["hypersave"].read = True
+    memory_client = HypersaveClient.from_env() if cfg.sources["hypersave"].read else None
     memory = MemoryConnector(memory_client)
-    perms = PermissionState(read_sources={Source.HYPERSAVE} if memory_client else set())
+    registry = build_registry(cfg, memory_client, args.files_root or None)
+    read_sources = {Source.HYPERSAVE} if memory_client else set()
+    if cfg.network_enabled:
+        read_sources.add(Source.WEB)
+    if cfg.sources["files"].read:
+        read_sources.add(Source.FILES)
+    perms = PermissionState(read_sources=read_sources, network_enabled=cfg.network_enabled)
     approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "yes": AutoApprove()}[args.approval]
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
-        context=ContextCompiler(perms, memory_client),
-        executor=Executor(memory),
+        context=ContextCompiler(perms, memory_client, registry),
+        executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled)),
         approval=approval,
         audit_path=args.audit_log,
     )

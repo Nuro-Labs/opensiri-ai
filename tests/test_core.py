@@ -98,3 +98,26 @@ def test_source_manifests_cover_core_sources():
     for name in ["hypersave", "files", "calendar", "contacts", "notes", "reminders", "mail", "messages", "safari", "photos", "web"]:
         assert name in MANIFESTS
     assert "Calendar" in manifest_table()
+
+
+def test_files_connector_path_boundary(tmp_path):
+    from eliot_harness.connectors.files import FilesConnector
+    root = tmp_path / "root"
+    root.mkdir()
+    good = root / "a.txt"
+    good.write_text("hello")
+    bad = tmp_path / "root2.txt"
+    bad.write_text("bad")
+    c = FilesConnector([str(root)])
+    assert c.is_allowed(str(good))
+    assert not c.is_allowed(str(bad))
+    assert "hello" in c.read_file(str(good)).text
+
+
+def test_registry_applies_config():
+    from eliot_harness.config import HarnessConfig
+    from eliot_harness.connectors.registry import build_registry
+    cfg = HarnessConfig()
+    cfg.sources["files"].read = True
+    reg = build_registry(cfg, None, ["/tmp"])
+    assert reg.get("files").can_read

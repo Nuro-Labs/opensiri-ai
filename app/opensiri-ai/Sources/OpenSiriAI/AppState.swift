@@ -10,6 +10,8 @@ final class AppState: ObservableObject {
     @Published var repoRoot: String = UserDefaults.standard.string(forKey: "repoRoot") ?? FileManager.default.currentDirectoryPath
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
+    @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
+    @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var liveAX: Bool = true
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
@@ -21,5 +23,7 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(repoRoot, forKey: "repoRoot")
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")
         UserDefaults.standard.set(enableMemory, forKey: "enableMemory")
+        UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
+        UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
     }
 }

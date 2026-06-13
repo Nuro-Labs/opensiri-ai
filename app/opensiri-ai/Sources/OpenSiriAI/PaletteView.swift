@@ -23,6 +23,8 @@ struct PaletteView: View {
                     Text("Auto yes").tag("yes")
                 }.frame(width: 170)
                 Toggle("Memory", isOn: $state.enableMemory)
+                Toggle("Files", isOn: $state.enableFiles)
+                Toggle("Web", isOn: $state.enableWeb)
                 Toggle("Live AX", isOn: $state.liveAX)
                 Spacer()
                 Button("Stop") { stop() }.disabled(!state.isRunning)
