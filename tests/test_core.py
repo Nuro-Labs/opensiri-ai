@@ -7,6 +7,8 @@ from eliot_harness.model import EliotModelClient
 from eliot_harness.permissions import PermissionState
 from eliot_harness.policy import PolicyDecision, PolicyEngine
 from eliot_harness.writing import is_draft_only_task, draft_from_context
+from eliot_harness.references import ReferenceStore
+from eliot_harness.sources import MANIFESTS, manifest_table
 from eliot_harness.schema import normalize_action
 
 
@@ -84,3 +86,15 @@ def test_mail_messages_do_not_send_by_default():
     assert "SEND REQUIRES APPROVAL" in MailConnector().send_email("a@example.test", "S", "B").text
     assert "Draft message" in MessagesConnector().draft_message("Alex", "Hi").text
     assert "SEND REQUIRES APPROVAL" in MessagesConnector().send_message("Alex", "Hi").text
+
+
+def test_reference_resolver_latest_draft():
+    store = ReferenceStore()
+    store.add("draft", "email draft", "hello")
+    assert store.resolve_text("send it").value == "hello"
+
+
+def test_source_manifests_cover_core_sources():
+    for name in ["hypersave", "files", "calendar", "contacts", "notes", "reminders", "mail", "messages", "safari", "photos", "web"]:
+        assert name in MANIFESTS
+    assert "Calendar" in manifest_table()

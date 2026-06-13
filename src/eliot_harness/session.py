@@ -6,6 +6,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
+from .references import ReferenceStore
 
 
 @dataclass
@@ -17,6 +18,7 @@ class SessionState:
     goal: str | None = None
     facts_used: list[str] = field(default_factory=list)
     decisions: list[dict[str, Any]] = field(default_factory=list)
+    references: ReferenceStore = field(default_factory=ReferenceStore)
     turns: int = 0
 
     def remember_decision(self, action: str, decision: str, reason: str) -> None:

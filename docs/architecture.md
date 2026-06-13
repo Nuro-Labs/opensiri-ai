@@ -81,6 +81,19 @@ Every source is opt-in:
 - Photos/visual later
 - Hypersave
 
+Each source is described by a manifest in `eliot_harness.sources`. The permission center should be generated from those manifests so the UI and runtime cannot drift.
+
+## Reference Resolution
+
+The harness stores typed reference objects for recent drafts, selected files, answers, shell results, and app selections. This is what powers follow-up commands like:
+
+- "send it"
+- "add that to my calendar"
+- "remind me about that"
+- "compare those"
+
+The model may suggest the action, but the harness resolves the referenced object and asks for approval when the action is risky.
+
 Each connector gets independent read/write settings.
 
 ## Safety

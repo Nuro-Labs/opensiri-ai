@@ -18,6 +18,7 @@ from .schema import make_observation
 from .transcript import Transcript
 from . import mac_ax
 from .writing import draft_from_context, is_draft_only_task
+from .session import SessionState
 
 
 class HarnessRuntime:
@@ -31,9 +32,11 @@ class HarnessRuntime:
 
     def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None, live_ax: bool = False) -> Transcript:
         transcript = Transcript(task=task)
+        session = SessionState(task=task)
         pre_context = self.context.compile(task).render()
         if is_draft_only_task(task):
             result = draft_from_context(task, pre_context)
+            session.references.add("draft", "latest draft", result)
             rec = {"turn": 0, "obs": "draft-only harness skill", "action": {"name": "draft_only", "args": {}}, "latency_s": 0.0, "result": result}
             transcript.add(rec)
             append_audit(self.audit_path, {"event": "draft_only", "record": rec})
@@ -82,6 +85,10 @@ class HarnessRuntime:
                 target_app = str(action.args.get("name", "")) or target_app
             executed = self.executor.execute(action)
             rec["result"] = executed.output[:1000]
+            if action.name in ("memory_ask", "read") and executed.output:
+                session.references.add("answer", executed.output[:120], executed.output)
+            if action.name == "run_shell" and executed.output:
+                session.references.add("shell_result", executed.output[:120], executed.output)
             transcript.add(rec)
             append_audit(self.audit_path, {"event": "tool_result", "record": rec})
             result = executed.output
