@@ -26,7 +26,10 @@ class DenyAllApproval(ApprovalProvider):
 
 class ConsoleApproval(ApprovalProvider):
     def approve(self, action: Action, verdict: Verdict) -> ApprovalDecision:
-        ans = input(f"Allow {action.name} ({verdict.reason})? y/N> ").strip().lower()
+        try:
+            ans = input(f"Allow {action.name} ({verdict.reason})? y/N> ").strip().lower()
+        except EOFError:
+            return ApprovalDecision(False, "console unavailable; failed closed")
         return ApprovalDecision(ans in ("y", "yes"), "console approval" if ans in ("y", "yes") else "console denied")
 
 
