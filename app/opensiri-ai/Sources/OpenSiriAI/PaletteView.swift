@@ -28,9 +28,11 @@ struct PaletteView: View {
                     .transition(.scale(scale: 1.03).combined(with: .opacity))
             }
         }
+        .background(FloatingWindowConfigurator(expanded: expanded))
         .animation(.spring(response: 0.35, dampingFraction: 0.86), value: expanded)
         .onAppear { focused = true }
         .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focused = true }
+        .onReceive(NotificationCenter.default.publisher(for: .centerOpenSiriWindow)) { _ in recenterWindow() }
         .task { await pollApprovals() }
         .sheet(isPresented: $state.showHistory) { HistoryView(sessions: state.sessionSummaries) }
     }
@@ -95,6 +97,19 @@ struct PaletteView: View {
         state.output = ""
         state.technicalLog = ""
     }
+
+    func recenterWindow() {
+        guard let window = NSApp.keyWindow ?? NSApp.windows.first else { return }
+        let target = expanded ? NSSize(width: 940, height: 690) : NSSize(width: 680, height: 138)
+        if let screen = window.screen ?? NSScreen.main {
+            let visible = screen.visibleFrame
+            var frame = window.frame
+            frame.size = target
+            frame.origin.x = visible.midX - target.width / 2
+            frame.origin.y = visible.maxY - target.height - 72
+            window.setFrame(frame, display: true, animate: true)
+        }
+    }
 }
 
 struct CompactSiriSurface: View {
@@ -131,6 +146,16 @@ struct CompactSiriSurface: View {
         .padding(22)
         .frame(width: 640)
         .glassPanel(cornerRadius: 30)
+        .overlay(alignment: .topTrailing) {
+            Text("⌥ Space")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(.white.opacity(0.48))
+                .clipShape(Capsule())
+                .padding(12)
+        }
         .shadow(color: .black.opacity(0.20), radius: 38, x: 0, y: 24)
     }
 }
@@ -160,6 +185,7 @@ struct ExpandedSiriSurface: View {
                             if state.isRunning { WorkingRow(status: state.status) }
                             if let request = state.approvalRequest { ApprovalCard(request: request, approve: approveRequest, deny: denyRequest) }
                             ForEach(state.messages) { msg in MessageBubble(message: msg).id(msg.id) }
+                            if !state.technicalLog.isEmpty { LatestResultCard(text: state.technicalLog) }
                             SourceStrip(chips: state.sourceChips)
                         }
                         .padding(26)
@@ -319,7 +345,11 @@ struct MessageBubble: View {
             if message.role == .user { Spacer(minLength: 90) }
             VStack(alignment: .leading, spacing: 8) {
                 Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                Text(message.text).font(.system(size: message.role == .assistant ? 16 : 14, weight: .regular)).textSelection(.enabled)
+                if message.role == .assistant && looksStructured(message.text) {
+                    StructuredResultText(text: message.text)
+                } else {
+                    Text(message.text).font(.system(size: message.role == .assistant ? 16 : 14, weight: .regular)).textSelection(.enabled)
+                }
             }
             .padding(14)
             .background(background)
@@ -329,6 +359,39 @@ struct MessageBubble: View {
     }
     var label: String { switch message.role { case .user: "You"; case .assistant: "OpenSiri"; case .system: "Ready" } }
     var background: some ShapeStyle { switch message.role { case .user: return AnyShapeStyle(.white.opacity(0.72)); case .assistant: return AnyShapeStyle(.black.opacity(0.055)); case .system: return AnyShapeStyle(.green.opacity(0.10)) } }
+    func looksStructured(_ text: String) -> Bool { text.contains(" | ") || text.contains("Subject:") || text.contains("DRY RUN") || text.contains("Created") || text.contains("created") }
+}
+
+struct StructuredResultText: View {
+    let text: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init).prefix(8), id: \.self) { line in
+                HStack(alignment: .top, spacing: 8) {
+                    Circle().fill(.blue.opacity(0.55)).frame(width: 5, height: 5).padding(.top, 7)
+                    Text(line).font(.system(size: 15)).textSelection(.enabled)
+                }
+            }
+        }
+    }
+}
+
+struct LatestResultCard: View {
+    let text: String
+    var body: some View {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Latest Tool Output", systemImage: "bolt.horizontal.circle.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                Text(String(trimmed.suffix(700))).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+            }
+            .padding(12)
+            .background(.white.opacity(0.36))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
 }
 
 struct ApprovalCard: View {
@@ -401,6 +464,7 @@ struct AuroraBackdrop: View {
             LinearGradient(colors: [Color(nsColor: .windowBackgroundColor), .white.opacity(0.75)], startPoint: .topLeading, endPoint: .bottomTrailing)
             Circle().fill(.orange.opacity(0.14)).blur(radius: 42).offset(x: -250, y: -160)
             Circle().fill(.blue.opacity(0.12)).blur(radius: 55).offset(x: 280, y: 190)
+            Rectangle().fill(.white.opacity(0.001))
         }
         .ignoresSafeArea()
     }

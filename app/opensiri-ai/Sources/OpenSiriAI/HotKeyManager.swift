@@ -14,6 +14,7 @@ final class HotKeyManager {
         InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
+                NotificationCenter.default.post(name: .centerOpenSiriWindow, object: nil)
                 NotificationCenter.default.post(name: .focusPalette, object: nil)
             }
             return noErr

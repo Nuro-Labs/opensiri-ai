@@ -10,8 +10,10 @@ struct OpenSiriAIApp: App {
 
     var body: some Scene {
         WindowGroup("opensiri-ai") {
-            PaletteView().environmentObject(state).frame(minWidth: 760, minHeight: 520)
+            PaletteView().environmentObject(state)
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
         Settings { SettingsView().environmentObject(state) }
     }
 }
