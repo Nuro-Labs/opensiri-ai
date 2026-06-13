@@ -79,3 +79,11 @@ Third-party harnesses should copy the guard model:
 ## Repository Status
 
 This repo now includes a working Python runtime loop, OpenAI-compatible model client, deterministic guard, approval providers, transcript/audit logging, Hypersave client, context compiler, and initial connector framework. The Mac Accessibility bridge is optional and imported lazily so core tests run without PyObjC.
+
+## Finder Quick Action Scaffold
+
+```bash
+scripts/install-finder-quick-action.sh
+```
+
+Then connect the installed script from Shortcuts.app or Automator as a Finder Quick Action. This keeps the actual execution path inside the same guarded harness.

@@ -23,3 +23,4 @@ Public wording: opensiri-ai, an open-source Mac personal assistant harness.
 - Approval sheet for risky actions.
 - Replayable transcript.
 - Permission center.
+- Finder Quick Action target via `scripts/install-finder-quick-action.sh`.

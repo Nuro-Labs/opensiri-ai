@@ -24,7 +24,7 @@ struct SettingsView: View {
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)
                 Toggle("Live Accessibility Tree", isOn: $state.liveAX)
-                Button("Save Source Settings") { state.persist() }
+                Button("Save Source Settings") { state.persist(); keyStatus = "Settings saved" }
             }
             Section("Safety") {
                 Text("Destructive, send, payment, credential, and network actions are intercepted before execution.").foregroundStyle(.secondary)

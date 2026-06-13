@@ -27,5 +27,39 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
+        writeHarnessConfig()
+    }
+
+    func writeHarnessConfig() {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let configURL = home.appendingPathComponent(".config/opensiri-ai/config.json")
+        let sources: [String: [String: Any]] = [
+            "hypersave": ["read": enableMemory, "write": false, "max_sensitivity": "high"],
+            "files": ["read": enableFiles, "write": false, "max_sensitivity": "high"],
+            "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
+            "photos": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],
+            "calendar": ["read": false, "write": false, "max_sensitivity": "medium"],
+            "contacts": ["read": false, "write": false, "max_sensitivity": "high"],
+            "notes": ["read": false, "write": false, "max_sensitivity": "high"],
+            "reminders": ["read": false, "write": false, "max_sensitivity": "medium"],
+            "mail": ["read": false, "write": false, "max_sensitivity": "hyper"],
+            "messages": ["read": false, "write": false, "max_sensitivity": "hyper"],
+            "safari": ["read": false, "write": false, "max_sensitivity": "high"]
+        ]
+        let data: [String: Any] = [
+            "model_url": modelURL,
+            "model_name": modelName,
+            "audit_path": "~/.local/share/opensiri-ai/audit.jsonl",
+            "transcript_dir": "~/.local/share/opensiri-ai/transcripts",
+            "network_enabled": enableWeb,
+            "sources": sources
+        ]
+        do {
+            try FileManager.default.createDirectory(at: configURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let json = try JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted, .sortedKeys])
+            try json.write(to: configURL)
+        } catch {
+            status = "Config save failed"
+        }
     }
 }
