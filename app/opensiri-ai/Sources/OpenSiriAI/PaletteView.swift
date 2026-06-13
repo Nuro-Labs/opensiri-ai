@@ -36,6 +36,8 @@ struct PaletteView: View {
                 Spacer()
                 Button("Stop") { stop() }.disabled(!state.isRunning)
                 Button("Transcript") { openTranscript() }.disabled(state.lastTranscript.isEmpty)
+                Button("Audit") { openAudit() }
+                Button("History") { openHistory() }
                 Button("Clear") { clearConversation() }.disabled(state.isRunning)
                 Button("Run") { run() }.keyboardShortcut(.return, modifiers: [.command]).disabled(state.task.isEmpty || state.isRunning)
             }
@@ -54,6 +56,7 @@ struct PaletteView: View {
         .onAppear { focused = true }
         .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focused = true }
         .task { await pollApprovals() }
+        .sheet(isPresented: $state.showHistory) { HistoryView(sessions: state.sessionSummaries) }
     }
 
     func run() {
@@ -97,6 +100,17 @@ struct PaletteView: View {
     func openTranscript() {
         guard !state.lastTranscript.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: state.lastTranscript)])
+    }
+
+    func openAudit() {
+        let url = state.auditURL
+        if FileManager.default.fileExists(atPath: url.path) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        else { NSWorkspace.shared.activateFileViewerSelecting([url.deletingLastPathComponent()]) }
+    }
+
+    func openHistory() {
+        state.loadSessionSummaries()
+        state.showHistory = true
     }
 
     func clearConversation() {
@@ -169,6 +183,36 @@ struct ApprovalCard: View {
         .padding(14)
         .background(Color.orange.opacity(0.16))
         .clipShape(RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+struct HistoryView: View {
+    let sessions: [SessionSummary]
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Conversation History").font(.title2.weight(.semibold))
+            if sessions.isEmpty {
+                Text("No saved sessions yet.").foregroundStyle(.secondary)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(sessions) { session in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(session.task.isEmpty ? "Untitled session" : session.task).font(.headline).lineLimit(2)
+                                Text(session.session_id).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                Text(Date(timeIntervalSince1970: session.started_at).formatted()).font(.caption).foregroundStyle(.secondary)
+                            }
+                            .padding(10)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.secondary.opacity(0.10))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                    }
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 520, height: 460)
     }
 }
 

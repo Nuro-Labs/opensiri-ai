@@ -35,3 +35,5 @@ Each connector must declare:
 - timeout
 - provenance fields
 - whether content is trusted or untrusted
+
+The macOS app includes in-app approval cards, transcript access, audit-log access, and recent session history for debugging and continuity.

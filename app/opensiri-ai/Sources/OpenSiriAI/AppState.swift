@@ -39,6 +39,13 @@ struct AnyCodable: Decodable, CustomStringConvertible, Equatable {
     }
 }
 
+struct SessionSummary: Identifiable, Equatable, Decodable {
+    let session_id: String
+    let task: String
+    let started_at: Double
+    var id: String { session_id }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var task: String = ""
@@ -69,8 +76,13 @@ final class AppState: ObservableObject {
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
     @Published var approvalRequest: ApprovalRequest?
+    @Published var showHistory: Bool = false
+    @Published var sessionSummaries: [SessionSummary] = []
     var process: Process?
     var approvalDir: URL?
+
+    var auditURL: URL { dataRoot().appendingPathComponent("results/app-audit.jsonl") }
+    var sessionDir: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/share/opensiri-ai/sessions") }
 
     var sourceChips: [String] {
         var chips = ["Guarded", "Audit"]
@@ -185,5 +197,22 @@ final class AppState: ObservableObject {
         } catch {
             status = "Config save failed"
         }
+    }
+
+    func loadSessionSummaries() {
+        let fm = FileManager.default
+        guard let files = try? fm.contentsOfDirectory(at: sessionDir, includingPropertiesForKeys: [.contentModificationDateKey]) else {
+            sessionSummaries = []
+            return
+        }
+        let decoder = JSONDecoder()
+        sessionSummaries = files
+            .filter { $0.pathExtension == "json" }
+            .sorted { (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast > (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast }
+            .prefix(30)
+            .compactMap { url in
+                guard let data = try? Data(contentsOf: url) else { return nil }
+                return try? decoder.decode(SessionSummary.self, from: data)
+            }
     }
 }
