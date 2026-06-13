@@ -5,6 +5,7 @@ from eliot_harness.context import ContextCompiler
 from eliot_harness.guard import classify
 from eliot_harness.model import EliotModelClient
 from eliot_harness.permissions import PermissionState
+from eliot_harness.policy import PolicyDecision, PolicyEngine
 from eliot_harness.schema import normalize_action
 
 
@@ -39,3 +40,15 @@ def test_model_parse_action_structured():
     client = EliotModelClient()
     msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}
     assert client._parse_action(msg).args["name"] == "Notes"
+
+
+def test_policy_denies_memory_without_permission():
+    engine = PolicyEngine(PermissionState())
+    result = engine.evaluate(normalize_action({"name": "memory_ask", "args": {"query": "x"}}))
+    assert result.decision == PolicyDecision.DENY
+
+
+def test_policy_requires_approval_for_delete():
+    engine = PolicyEngine(PermissionState())
+    result = engine.evaluate(normalize_action({"name": "run_shell", "args": {"cmd": "rm /tmp/x"}}))
+    assert result.decision == PolicyDecision.REQUIRE_APPROVAL

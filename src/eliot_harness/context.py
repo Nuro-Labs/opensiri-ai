@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from .hypersave import HypersaveClient
 from .permissions import PermissionState, Source
+from .connectors.base import ConnectorRegistry
 
 
 @dataclass
@@ -23,15 +24,20 @@ class ContextBundle:
 
 
 class ContextCompiler:
-    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None):
+    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None, registry: ConnectorRegistry | None = None):
         self.permissions = permissions
         self.memory = memory
+        self.registry = registry
 
     def compile(self, task: str) -> ContextBundle:
         bundle = ContextBundle()
         bundle.permission_lines.extend(self._permission_summary())
         if self.memory and self.permissions.can_read(Source.HYPERSAVE):
             bundle.memory_lines.extend(self._memory_for_task(task))
+        if self.registry:
+            for item in self.registry.read_context(task):
+                if item.text and "undefined" not in item.text.lower():
+                    bundle.memory_lines.append(item.text[:300])
         return bundle
 
     def _permission_summary(self) -> list[str]:

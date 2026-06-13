@@ -6,6 +6,7 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 
 - `MemoryConnector`: wraps Hypersave search/ask/save.
 - `FilesConnector`: exposes allowed file roots and path-boundary checks.
+- `WebConnector`: disabled by default; world-knowledge access only when explicitly enabled.
 
 ## Planned
 

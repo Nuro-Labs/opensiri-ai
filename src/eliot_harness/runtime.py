@@ -12,6 +12,7 @@ from .context import ContextCompiler
 from .executor import Executor
 from .guard import classify
 from .model import EliotModelClient
+from .policy import PolicyDecision, PolicyEngine
 from .prompt import ELIOT_SYSTEM
 from .schema import make_observation
 from .transcript import Transcript
@@ -25,6 +26,7 @@ class HarnessRuntime:
         self.executor = executor
         self.approval = approval or DenyAllApproval()
         self.audit_path = audit_path
+        self.policy = PolicyEngine(context.permissions)
 
     def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None, live_ax: bool = False) -> Transcript:
         transcript = Transcript(task=task)
@@ -47,8 +49,16 @@ class HarnessRuntime:
                 append_audit(self.audit_path, {"event": "unparseable", "record": rec})
                 break
             messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": f"call_{turn}", "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
-            verdict = classify(action.__dict__, obs)
-            if verdict.destructive:
+            policy = self.policy.evaluate(action, obs)
+            verdict = policy.guard
+            rec["policy"] = {"decision": policy.decision.value, "reason": policy.reason, "tier": policy.tier.value}
+            if policy.decision == PolicyDecision.DENY:
+                rec["result"] = "blocked-by-policy"
+                transcript.add(rec)
+                append_audit(self.audit_path, {"event": "policy_block", "record": rec})
+                result = 'user: "No — blocked by permission policy."'
+                continue
+            if policy.decision == PolicyDecision.REQUIRE_APPROVAL:
                 decision = self.approval.approve(action, verdict)
                 rec["guard"] = verdict.__dict__
                 rec["approval"] = decision.__dict__

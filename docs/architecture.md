@@ -12,6 +12,9 @@ The harness owns:
 - tool execution
 - safety interception
 - audit logs
+- policy decisions
+- connector scoping
+- session state
 
 The Eliot model owns:
 

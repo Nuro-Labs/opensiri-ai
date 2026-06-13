@@ -42,8 +42,30 @@ class Executor:
             return ExecutionResult(self.memory.ask(str(args.get("query", ""))) if self.memory else "memory unavailable")
         if name == "memory_save":
             return ExecutionResult(self.memory.save(str(args.get("content", "")), str(args.get("source", "eliot")), str(args.get("sensitivity", "medium"))) if self.memory else "memory unavailable")
+        if name == "invoke_intent":
+            return ExecutionResult(self._invoke_intent(str(args.get("app", "")), str(args.get("intent", "")), args.get("params") or {}))
         if name == "read":
             return ExecutionResult("read is available in the full Mac executor; generic executor has no UI element map")
         if name in ("click", "type"):
             return ExecutionResult(f"{name} requires a live Accessibility element map")
         return ExecutionResult(f"not implemented by generic executor: {name}")
+
+    def _invoke_intent(self, app: str, intent: str, params: dict) -> str:
+        osa = None
+        if app == "Reminders" and intent == "AddReminder":
+            osa = 'tell application "Reminders" to make new reminder with properties {name:' + _q(params.get("text", "")) + '}'
+        elif app == "Notes" and intent == "CreateNote":
+            osa = ('tell application "Notes" to make new note at folder "Notes" with properties '
+                   '{name:' + _q(params.get("title", "")) + ', body:' + _q(params.get("body", "")) + '}')
+        elif app == "Calendar" and intent == "CreateEvent":
+            title = _q(params.get("title", "Eliot Event"))
+            # Minimal safe fallback: create an all-day event today if no parser is available.
+            osa = 'tell application "Calendar" to tell calendar 1 to make new event with properties {summary:' + title + ', start date:(current date), end date:(current date) + 3600}'
+        if osa is None:
+            return f"error: unsupported intent {app}/{intent}"
+        r = subprocess.run(["osascript", "-e", osa], capture_output=True, text=True, timeout=30)
+        return "ok" + ((": " + r.stdout.strip()[:300]) if r.stdout.strip() else "") if r.returncode == 0 else "error: " + r.stderr.strip()[:300]
+
+
+def _q(value) -> str:
+    return '"' + str(value).replace('"', '\\"') + '"'
