@@ -4,7 +4,13 @@ enum HarnessBridge {
     @MainActor
     static func run(task: String, state: AppState) throws {
         state.persist()
-        let root = URL(fileURLWithPath: state.repoRoot)
+        let codeRootPath = AppState.isRepoRoot(state.repoRoot) ? state.repoRoot : AppState.detectRepoRoot()
+        guard AppState.isRepoRoot(codeRootPath) else {
+            throw NSError(domain: "opensiri-ai", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find opensiri-ai repo root. Set Repo root in Settings."])
+        }
+        state.repoRoot = codeRootPath
+        state.persist()
+        let root = URL(fileURLWithPath: codeRootPath)
         let dataRoot = state.dataRoot()
         let candidates = [root.appendingPathComponent(".venv/bin/python").path, "/usr/bin/python3"]
         let python = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"

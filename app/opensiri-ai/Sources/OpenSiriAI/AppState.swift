@@ -7,7 +7,7 @@ final class AppState: ObservableObject {
     @Published var status: String = "Idle"
     @Published var modelURL: String = UserDefaults.standard.string(forKey: "modelURL") ?? "http://localhost:8081"
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
-    @Published var repoRoot: String = UserDefaults.standard.string(forKey: "repoRoot") ?? AppState.detectRepoRoot()
+    @Published var repoRoot: String = AppState.initialRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
@@ -17,6 +17,17 @@ final class AppState: ObservableObject {
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
     var process: Process?
+
+    static func isRepoRoot(_ path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path + "/src/eliot_harness")
+    }
+
+    static func initialRepoRoot() -> String {
+        if let saved = UserDefaults.standard.string(forKey: "repoRoot"), isRepoRoot(saved) {
+            return saved
+        }
+        return detectRepoRoot()
+    }
 
     static func detectRepoRoot() -> String {
         let fm = FileManager.default
