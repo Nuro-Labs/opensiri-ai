@@ -42,7 +42,7 @@ def main() -> int:
     args = ap.parse_args()
 
     api_key = os.environ.get("HYPERSAVE_API_KEY")
-    base_url = os.environ.get("HYPERSAVE_BASE_URL", "http://127.0.0.1:3005")
+    base_url = os.environ.get("HYPERSAVE_BASE_URL", "http://localhost:3005")
     memory_client = HypersaveClient(api_key=api_key, base_url=base_url, timeout=120) if api_key else None
     memory = MemoryConnector(memory_client)
     web = WebConnector(enabled=args.enable_web)
