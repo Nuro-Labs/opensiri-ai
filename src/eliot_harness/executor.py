@@ -7,6 +7,9 @@ from dataclasses import dataclass
 
 from .connectors.memory import MemoryConnector
 from .connectors.web import WebConnector
+from .connectors.notes import NotesConnector
+from .connectors.reminders import RemindersConnector
+from .connectors.calendar import CalendarConnector
 from . import mac_ax
 from .schema import Action
 
@@ -21,6 +24,9 @@ class Executor:
     def __init__(self, memory: MemoryConnector | None = None, web: WebConnector | None = None, shell_timeout: float = 30.0):
         self.memory = memory
         self.web = web
+        self.notes = NotesConnector()
+        self.reminders = RemindersConnector()
+        self.calendar = CalendarConnector()
         self.shell_timeout = shell_timeout
 
     def execute(self, action: Action, snapshot=None) -> ExecutionResult:
@@ -47,7 +53,16 @@ class Executor:
         if name == "web_search":
             return ExecutionResult(self.web.execute("web_search", args).text if self.web else "web access unavailable")
         if name == "invoke_intent":
-            return ExecutionResult(self._invoke_intent(str(args.get("app", "")), str(args.get("intent", "")), args.get("params") or {}))
+            app = str(args.get("app", ""))
+            intent = str(args.get("intent", ""))
+            params = args.get("params") or {}
+            if app == "Reminders" and intent == "AddReminder":
+                return ExecutionResult(self.reminders.add_reminder(str(params.get("text", "")), dry_run=not self.reminders.can_write).text)
+            if app == "Notes" and intent == "CreateNote":
+                return ExecutionResult(self.notes.create_note(str(params.get("title", "Untitled")), str(params.get("body", "")), dry_run=not self.notes.can_write).text)
+            if app == "Calendar" and intent == "CreateEvent":
+                return ExecutionResult(self.calendar.create_event(str(params.get("title", "Eliot Event")), dry_run=not self.calendar.can_write).text)
+            return ExecutionResult(self._invoke_intent(app, intent, params))
         if name == "read":
             return ExecutionResult("read is available in the full Mac executor; generic executor has no UI element map")
         if name in ("click", "type"):

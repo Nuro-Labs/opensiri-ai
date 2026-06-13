@@ -66,3 +66,21 @@ def test_draft_only_detection_and_output():
     assert is_draft_only_task("Draft an email to Alex. Do not send it.")
     draft = draft_from_context("Draft an email asking to accelerate delivery. Do not send it.", "Alex Chen alex@example.test ventilation 240V concise")
     assert "Draft email" in draft and "Subject:" in draft and "delivery" in draft.lower()
+
+
+def test_app_connectors_dry_run_writes():
+    from eliot_harness.connectors.notes import NotesConnector
+    from eliot_harness.connectors.reminders import RemindersConnector
+    from eliot_harness.connectors.calendar import CalendarConnector
+    assert "DRY RUN" in NotesConnector().create_note("T", "B").text
+    assert "DRY RUN" in RemindersConnector().add_reminder("Water plant").text
+    assert "DRY RUN" in CalendarConnector().create_event("Meeting").text
+
+
+def test_mail_messages_do_not_send_by_default():
+    from eliot_harness.connectors.mail import MailConnector
+    from eliot_harness.connectors.messages import MessagesConnector
+    assert "Draft email" in MailConnector().draft_email("a@example.test", "S", "B").text
+    assert "SEND REQUIRES APPROVAL" in MailConnector().send_email("a@example.test", "S", "B").text
+    assert "Draft message" in MessagesConnector().draft_message("Alex", "Hi").text
+    assert "SEND REQUIRES APPROVAL" in MessagesConnector().send_message("Alex", "Hi").text
