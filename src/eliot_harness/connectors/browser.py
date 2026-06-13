@@ -76,6 +76,24 @@ end tell'''
             )
         return results
 
+    def active_tab(self, browser: str = "Google Chrome") -> ConnectorResult:
+        script = f'tell application {q(browser)} to return (title of active tab of front window) & " | " & (URL of active tab of front window)'
+        out = run_osa(script)
+        return ConnectorResult(out, {"source": self.source, "browser": browser, "kind": "active_tab"})
+
+    def close_active_tab(self, browser: str = "Google Chrome", dry_run: bool = True) -> ConnectorResult:
+        if dry_run:
+            return ConnectorResult(f"DRY RUN close active tab in {browser}", {"source": self.source})
+        script = f'tell application {q(browser)} to close active tab of front window'
+        return ConnectorResult(run_osa(script), {"source": self.source, "browser": browser})
+
+    def open_downloads(self, dry_run: bool = True) -> ConnectorResult:
+        path = Path.home() / "Downloads"
+        if dry_run:
+            return ConnectorResult(f"DRY RUN open Downloads: {path}", {"source": self.source, "path": str(path)})
+        subprocess.run(["open", str(path)], capture_output=True, text=True, timeout=10)
+        return ConnectorResult(f"opened Downloads: {path}", {"source": self.source, "path": str(path)})
+
     def search_history(self, query: str, limit: int = 10) -> list[ConnectorResult]:
         """Search Chrome History SQLite files read-only when accessible.
 

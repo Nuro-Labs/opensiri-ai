@@ -9,6 +9,7 @@ from .browser import BrowserConnector
 from .calendar import CalendarConnector
 from .contacts import ContactsConnector
 from .files import FilesConnector
+from .finder import FinderConnector
 from .mail import MailConnector
 from .maps import MapsConnector
 from .memory import MemoryConnector
@@ -30,6 +31,7 @@ def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None 
     connectors = {
         "hypersave": MemoryConnector(memory_client),
         "files": FilesConnector(file_roots),
+        "finder": FinderConnector(file_roots),
         "calendar": CalendarConnector(),
         "browser": BrowserConnector(),
         "contacts": ContactsConnector(),

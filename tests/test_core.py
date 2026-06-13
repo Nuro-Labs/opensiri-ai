@@ -62,6 +62,20 @@ def test_system_control_dry_run():
     assert "DRY RUN" in SystemControlConnector().set_volume(25).text
 
 
+def test_finder_dry_run(tmp_path):
+    from eliot_harness.connectors.finder import FinderConnector
+    p = tmp_path / "a.txt"
+    p.write_text("x")
+    c = FinderConnector([str(tmp_path)])
+    assert "file:" in c.info(str(p)).text
+    assert "DRY RUN" in c.rename(str(p), "b.txt").text
+
+
+def test_browser_dry_run_downloads():
+    from eliot_harness.connectors.browser import BrowserConnector
+    assert "DRY RUN" in BrowserConnector().open_downloads().text
+
+
 def test_mac_tool_catalog_has_487_tools():
     from eliot_harness.tool_catalog import MAC_TOOLS, TARGET_TOOL_COUNT
     assert len(MAC_TOOLS) == TARGET_TOOL_COUNT == 487

@@ -16,6 +16,7 @@ class PermissionTier(str, Enum):
 
 class Source(str, Enum):
     FILES = "files"
+    FINDER = "finder"
     CALENDAR = "calendar"
     CONTACTS = "contacts"
     NOTES = "notes"

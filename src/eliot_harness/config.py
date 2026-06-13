@@ -27,6 +27,7 @@ class HarnessConfig:
     sources: dict[str, SourceConfig] = field(default_factory=lambda: {
         "hypersave": SourceConfig(read=False, write=False),
         "files": SourceConfig(read=False, write=False),
+        "finder": SourceConfig(read=False, write=False),
         "calendar": SourceConfig(read=False, write=False),
         "contacts": SourceConfig(read=False, write=False),
         "notes": SourceConfig(read=False, write=False),

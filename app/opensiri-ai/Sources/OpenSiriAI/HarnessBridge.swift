@@ -29,6 +29,8 @@ enum HarnessBridge {
         if state.enableMemoryWrite { args.append("--enable-memory-write") }
         if state.enableLocalIndex { args.append("--enable-local-index") }
         if state.enableFiles { args.append("--enable-files") }
+        if state.enableFinder { args.append("--enable-finder") }
+        if state.enableFinderWrite { args.append("--enable-finder-write") }
         if state.enableWeb { args.append("--enable-web") }
         if state.enableVisual { args.append("--enable-visual") }
         if state.enableMail { args.append("--enable-mail") }

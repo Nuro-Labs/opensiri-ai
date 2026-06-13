@@ -32,6 +32,8 @@ struct SettingsView: View {
                     }
                 Toggle("Local Background Index", isOn: $state.enableLocalIndex)
                 Toggle("Files / Finder Selection", isOn: $state.enableFiles)
+                Toggle("Finder Actions", isOn: $state.enableFinder)
+                Toggle("Allow Finder Writes", isOn: $state.enableFinderWrite)
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)
                 Toggle("Mail Read", isOn: $state.enableMail)

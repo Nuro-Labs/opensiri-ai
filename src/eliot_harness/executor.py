@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 
 from .connectors.files import FilesConnector
+from .connectors.finder import FinderConnector
 from .connectors.browser import BrowserConnector
 from .connectors.contacts import ContactsConnector
 from .connectors.mail import MailConnector
@@ -36,6 +37,7 @@ class Executor:
         self.web = web
         self.local_index = local_index
         self.files = FilesConnector(file_roots)
+        self.finder = FinderConnector(file_roots)
         self.browser = BrowserConnector()
         self.contacts = ContactsConnector()
         self.mail = MailConnector()
@@ -47,6 +49,8 @@ class Executor:
         self.system = SystemControlConnector()
         if permissions:
             self.files.can_read = permissions.can_read(Source.FILES)
+            self.finder.can_read = permissions.can_read(Source.FINDER)
+            self.finder.can_write = permissions.can_write(Source.FINDER)
             self.mail.can_read = permissions.can_read(Source.MAIL)
             self.mail.can_write = permissions.can_write(Source.MAIL)
             self.messages_index.can_read = permissions.can_read(Source.MESSAGES)
@@ -89,6 +93,8 @@ class Executor:
             return ExecutionResult(self.mail.draft_email(str(args.get("to", "")), str(args.get("subject", "")), str(args.get("body", "")), dry_run=True).text, terminal=True)
         if name == "mail_send":
             return ExecutionResult(self.mail.draft_email(str(args.get("to", "")), str(args.get("subject", "")), str(args.get("body", "")), dry_run=not self.mail.can_write).text, terminal=True)
+        if name == "mail_action":
+            return ExecutionResult(self._mail_action(args), terminal=True)
         if name == "messages_search":
             return ExecutionResult(self._messages_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
         if name == "message_draft":
@@ -109,6 +115,12 @@ class Executor:
             return ExecutionResult(self.browser.open_url(str(args.get("url", "")), str(args.get("browser", "Google Chrome")), dry_run=False).text)
         if name == "browser_history_search":
             return ExecutionResult("\n".join(r.text for r in self.browser.search_history(str(args.get("query", "")), int(args.get("limit", 10)))) or "no browser history results", terminal=True)
+        if name == "browser_tabs":
+            return ExecutionResult("\n".join(r.text for r in self.browser.list_tabs(str(args.get("browser", "Google Chrome")))) or "no browser tabs", terminal=True)
+        if name == "browser_close_tab":
+            return ExecutionResult(self.browser.close_active_tab(str(args.get("browser", "Google Chrome")), dry_run=not self.browser.can_write).text, terminal=True)
+        if name == "browser_open_downloads":
+            return ExecutionResult(self.browser.open_downloads(dry_run=not self.browser.can_write).text, terminal=True)
         if name == "browser_open_youtube_liked":
             if not self.browser.can_write:
                 return ExecutionResult(self.browser.open_youtube_liked(dry_run=True).text, terminal=True)
@@ -119,6 +131,8 @@ class Executor:
             return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=False).text)
         if name == "system_control":
             return ExecutionResult(self.system.execute(str(args.get("action", "status")), args).text, terminal=True)
+        if name == "finder_action":
+            return ExecutionResult(self._finder_action(args).text, terminal=True)
         if name == "mac_tool":
             return self._mac_tool(str(args.get("id", "")), args.get("args") if isinstance(args.get("args"), dict) else {})
         if name == "web_search":
@@ -183,6 +197,11 @@ class Executor:
             "mail.search": lambda: self.execute(Action("mail_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
             "mail.draft": lambda: self.execute(Action("mail_draft", {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", "")})),
             "mail.send": lambda: self.execute(Action("mail_send", {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", "")})),
+            "mail.thread": lambda: self.execute(Action("mail_action", {"action": "thread_summary", "query": args.get("query", "")})),
+            "mail.attachments": lambda: self.execute(Action("mail_action", {"action": "attachments"})),
+            "mail.flag": lambda: self.execute(Action("mail_action", {"action": "flag_selected"})),
+            "mail.unread": lambda: self.execute(Action("mail_action", {"action": "unread_selected"})),
+            "mail.archive": lambda: self.execute(Action("mail_action", {"action": "archive_selected"})),
             "messages.search": lambda: self.execute(Action("messages_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
             "messages.draft": lambda: self.execute(Action("message_draft", {"recipient": args.get("recipient", ""), "text": args.get("text", "")})),
             "messages.send": lambda: self.execute(Action("message_send", {"recipient": args.get("recipient", ""), "text": args.get("text", "")})),
@@ -199,6 +218,9 @@ class Executor:
             "contacts.resolve": lambda: self.execute(Action("contacts_resolve", {"name": args.get("name", ""), "limit": args.get("limit", 5)})),
             "browser.open_url": lambda: self.execute(Action("browser_open_url", {"url": args.get("url", ""), "browser": args.get("browser", "Google Chrome")})),
             "browser.history_search": lambda: self.execute(Action("browser_history_search", {"query": args.get("query", ""), "limit": args.get("limit", 10)})),
+            "browser.tabs": lambda: self.execute(Action("browser_tabs", {"browser": args.get("browser", "Google Chrome")})),
+            "browser.close_tab": lambda: self.execute(Action("browser_close_tab", {"browser": args.get("browser", "Google Chrome")})),
+            "browser.downloads": lambda: self.execute(Action("browser_open_downloads", {})),
             "browser.youtube_liked": lambda: self.execute(Action("browser_open_youtube_liked", {})),
             "browser.youtube_play_visible": lambda: self.execute(Action("browser_play_youtube", {})),
             "web.search": lambda: self.execute(Action("web_search", {"query": args.get("query", ""), "max_results": args.get("max_results", 3)})),
@@ -209,10 +231,61 @@ class Executor:
             "system.dnd": lambda: self.execute(Action("system_control", {"action": "dnd", "enabled": args.get("enabled", True)})),
             "system.lock": lambda: self.execute(Action("system_control", {"action": "lock_screen"})),
             "system.sleep_display": lambda: self.execute(Action("system_control", {"action": "sleep_display"})),
+            "finder.info": lambda: self.execute(Action("finder_action", {"action": "info", "path": args.get("path", "")})),
+            "finder.reveal": lambda: self.execute(Action("finder_action", {"action": "reveal", "path": args.get("path", "")})),
+            "finder.open": lambda: self.execute(Action("finder_action", {"action": "open", "path": args.get("path", "")})),
+            "finder.quicklook": lambda: self.execute(Action("finder_action", {"action": "quicklook", "path": args.get("path", "")})),
+            "finder.rename": lambda: self.execute(Action("finder_action", {"action": "rename", "path": args.get("path", ""), "new_name": args.get("new_name", "")})),
+            "finder.copy": lambda: self.execute(Action("finder_action", {"action": "copy", "path": args.get("path", ""), "dest": args.get("dest", "")})),
+            "finder.move": lambda: self.execute(Action("finder_action", {"action": "move", "path": args.get("path", ""), "dest": args.get("dest", "")})),
+            "finder.tag": lambda: self.execute(Action("finder_action", {"action": "tag", "path": args.get("path", ""), "tag": args.get("tag", "")})),
+            "finder.compress": lambda: self.execute(Action("finder_action", {"action": "compress", "path": args.get("path", ""), "dest": args.get("dest")})),
+            "finder.trash": lambda: self.execute(Action("finder_action", {"action": "trash", "path": args.get("path", "")})),
         }
         if tool_id in mapping:
             return mapping[tool_id]()
         return ExecutionResult(f"Mac tool catalog entry exists but is not implemented yet: {tool_id} ({tool.description})", terminal=True)
+
+    def _finder_action(self, args: dict):
+        action = str(args.get("action", "info"))
+        path = str(args.get("path", ""))
+        dry_run = bool(args.get("dry_run", False)) or not self.finder.can_write
+        if action == "info":
+            return self.finder.info(path)
+        if action == "reveal":
+            return self.finder.reveal(path, dry_run=dry_run)
+        if action == "open":
+            return self.finder.open_path(path, dry_run=dry_run)
+        if action == "quicklook":
+            return self.finder.quicklook(path, dry_run=dry_run)
+        if action == "rename":
+            return self.finder.rename(path, str(args.get("new_name", "")), dry_run=dry_run)
+        if action == "copy":
+            return self.finder.copy(path, str(args.get("dest", "")), dry_run=dry_run)
+        if action == "move":
+            return self.finder.move(path, str(args.get("dest", "")), dry_run=dry_run)
+        if action == "tag":
+            return self.finder.tag(path, str(args.get("tag", "")), dry_run=dry_run)
+        if action == "compress":
+            return self.finder.compress(path, args.get("dest"), dry_run=dry_run)
+        if action == "trash":
+            return self.finder.trash(path, dry_run=dry_run)
+        return self.finder.info(path)
+
+    def _mail_action(self, args: dict) -> str:
+        action = str(args.get("action", "thread_summary"))
+        dry_run = not self.mail.can_write
+        if action == "thread_summary":
+            return self.mail.thread_summary(str(args.get("query", ""))).text
+        if action == "attachments":
+            return "\n".join(r.text for r in self.mail.selected_attachments()) or "no selected mail attachments found"
+        if action == "flag_selected":
+            return self.mail.flag_selected(dry_run=dry_run).text
+        if action == "unread_selected":
+            return self.mail.mark_selected_unread(dry_run=dry_run).text
+        if action == "archive_selected":
+            return self.mail.archive_selected(dry_run=dry_run).text
+        return "unsupported mail action"
 
     def _invoke_intent(self, app: str, intent: str, params: dict) -> str:
         osa = None

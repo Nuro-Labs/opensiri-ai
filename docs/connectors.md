@@ -6,6 +6,7 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 
 - `MemoryConnector`: wraps Hypersave search/ask/save.
 - `FilesConnector`: reads allowed roots, detects Finder selection, extracts text from plain text, Office/RTF via `textutil`, and PDFs via `pdftotext`/Spotlight metadata when available.
+- `FinderConnector`: path-boundary-checked Finder/file actions including reveal, open, quicklook, rename, copy, move, tag, compress, and trash with approval-gated writes.
 - `WebConnector`: disabled by default; world-knowledge access only when explicitly enabled.
 - `NotesConnector`: reads recent note names and drafts/creates notes with approval-gated writes.
 - `RemindersConnector`: reads reminders and creates reminders with approval-gated writes via EventKit helper with AppleScript fallback.

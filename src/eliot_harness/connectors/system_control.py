@@ -18,7 +18,29 @@ class SystemControlConnector(Connector):
         volume = run_osa("output volume of (get volume settings)")
         muted = run_osa("output muted of (get volume settings)")
         dark = run_osa('tell application "System Events" to tell appearance preferences to get dark mode')
-        return ConnectorResult(f"Volume: {volume}; muted: {muted}; dark mode: {dark}", {"source": self.source})
+        battery = self.battery_status().text
+        wifi = self.wifi_status().text
+        bluetooth = self.bluetooth_status().text
+        return ConnectorResult(f"Volume: {volume}; muted: {muted}; dark mode: {dark}; {battery}; {wifi}; {bluetooth}", {"source": self.source})
+
+    def battery_status(self) -> ConnectorResult:
+        try:
+            r = subprocess.run(["pmset", "-g", "batt"], capture_output=True, text=True, timeout=5)
+            line = " ".join(x.strip() for x in r.stdout.splitlines() if x.strip())[:300]
+            return ConnectorResult("battery: " + (line or "unknown"), {"source": self.source})
+        except Exception:
+            return ConnectorResult("battery: unavailable", {"source": self.source})
+
+    def wifi_status(self) -> ConnectorResult:
+        try:
+            r = subprocess.run(["networksetup", "-getairportpower", "en0"], capture_output=True, text=True, timeout=5)
+            return ConnectorResult("wifi: " + (r.stdout.strip() or r.stderr.strip() or "unknown"), {"source": self.source})
+        except Exception:
+            return ConnectorResult("wifi: unavailable", {"source": self.source})
+
+    def bluetooth_status(self) -> ConnectorResult:
+        out = run_osa('tell application "System Events" to tell process "ControlCenter" to exists', timeout=5)
+        return ConnectorResult("bluetooth: status requires Control Center automation" if not out.startswith("error") else "bluetooth: unavailable", {"source": self.source})
 
     def set_volume(self, level: int, dry_run: bool = True) -> ConnectorResult:
         n = max(0, min(100, int(level)))
@@ -72,6 +94,12 @@ class SystemControlConnector(Connector):
         dry_run = bool(args.get("dry_run", False))
         if action_name == "status":
             return self.get_status()
+        if action_name == "battery":
+            return self.battery_status()
+        if action_name == "wifi":
+            return self.wifi_status()
+        if action_name == "bluetooth":
+            return self.bluetooth_status()
         if action_name == "set_volume":
             return self.set_volume(int(args.get("level", 50)), dry_run=dry_run)
         if action_name == "set_brightness":

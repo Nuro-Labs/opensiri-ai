@@ -35,6 +35,8 @@ def main() -> None:
     ap.add_argument("--index-path", default=str(DEFAULT_INDEX_PATH))
     ap.add_argument("--enable-web", action="store_true")
     ap.add_argument("--enable-files", action="store_true")
+    ap.add_argument("--enable-finder", action="store_true")
+    ap.add_argument("--enable-finder-write", action="store_true")
     ap.add_argument("--enable-mail", action="store_true")
     ap.add_argument("--enable-mail-write", action="store_true")
     ap.add_argument("--enable-messages", action="store_true")
@@ -70,6 +72,11 @@ def main() -> None:
         cfg.sources["web"].read = True
     if args.enable_files:
         cfg.sources["files"].read = True
+    if args.enable_finder:
+        cfg.sources["finder"].read = True
+    if args.enable_finder_write:
+        cfg.sources["finder"].read = True
+        cfg.sources["finder"].write = True
     if args.enable_visual:
         cfg.sources["visual"].read = True
     if args.enable_photos:
@@ -129,10 +136,14 @@ def main() -> None:
     for source in ("mail", "messages", "browser", "system"):
         if cfg.sources[source].write:
             write_sources.add(Source(source))
+    if cfg.sources["finder"].write:
+        write_sources.add(Source.FINDER)
     if cfg.network_enabled:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
         read_sources.add(Source.FILES)
+    if cfg.sources["finder"].read:
+        read_sources.add(Source.FINDER)
     for source in ("mail", "messages", "reminders", "calendar", "contacts", "browser", "system", "photos", "visual", "maps", "music", "podcasts"):
         if cfg.sources[source].read:
             read_sources.add(Source(source))

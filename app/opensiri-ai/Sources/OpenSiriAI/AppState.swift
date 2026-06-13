@@ -67,6 +67,8 @@ final class AppState: ObservableObject {
     @Published var enableMemoryWrite: Bool = UserDefaults.standard.bool(forKey: "enableMemoryWrite")
     @Published var enableLocalIndex: Bool = UserDefaults.standard.bool(forKey: "enableLocalIndex")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
+    @Published var enableFinder: Bool = UserDefaults.standard.bool(forKey: "enableFinder")
+    @Published var enableFinderWrite: Bool = UserDefaults.standard.bool(forKey: "enableFinderWrite")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
     @Published var enableMail: Bool = UserDefaults.standard.bool(forKey: "enableMail")
@@ -102,6 +104,8 @@ final class AppState: ObservableObject {
         if enableMemoryWrite { chips.append("Memory Write") }
         if enableLocalIndex { chips.append("Local Index") }
         if enableFiles { chips.append("Files") }
+        if enableFinder { chips.append("Finder") }
+        if enableFinderWrite { chips.append("Finder Write") }
         if enableWeb { chips.append("Web") }
         if enableVisual { chips.append("Visual") }
         if enableMail { chips.append("Mail") }
@@ -172,6 +176,8 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableMemoryWrite, forKey: "enableMemoryWrite")
         UserDefaults.standard.set(enableLocalIndex, forKey: "enableLocalIndex")
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
+        UserDefaults.standard.set(enableFinder, forKey: "enableFinder")
+        UserDefaults.standard.set(enableFinderWrite, forKey: "enableFinderWrite")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
         UserDefaults.standard.set(enableMail, forKey: "enableMail")
@@ -197,6 +203,7 @@ final class AppState: ObservableObject {
         let sources: [String: [String: Any]] = [
             "hypersave": ["read": enableMemory || enableMemoryWrite, "write": enableMemoryWrite, "max_sensitivity": "high"],
             "files": ["read": enableFiles, "write": false, "max_sensitivity": "high"],
+            "finder": ["read": enableFinder || enableFinderWrite, "write": enableFinderWrite, "max_sensitivity": "high"],
             "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
             "photos": ["read": enablePhotos, "write": false, "max_sensitivity": "hyper"],
             "visual": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],

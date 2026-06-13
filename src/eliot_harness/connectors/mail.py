@@ -282,3 +282,45 @@ end tell'''
 
     def send_email(self, to: str, subject: str, body: str) -> ConnectorResult:
         return ConnectorResult(f"SEND REQUIRES APPROVAL: {to} / {subject}", {"requires_approval": True, "tier": "external"})
+
+    def flag_selected(self, dry_run: bool = True) -> ConnectorResult:
+        if dry_run or not self.can_write:
+            return ConnectorResult("DRY RUN flag selected Mail messages", {"requires_approval": True})
+        return ConnectorResult(run_osa('tell application "Mail" to set flagged status of selection to true'), {"source": self.source})
+
+    def mark_selected_unread(self, dry_run: bool = True) -> ConnectorResult:
+        if dry_run or not self.can_write:
+            return ConnectorResult("DRY RUN mark selected Mail messages unread", {"requires_approval": True})
+        return ConnectorResult(run_osa('tell application "Mail" to set read status of selection to false'), {"source": self.source})
+
+    def archive_selected(self, dry_run: bool = True) -> ConnectorResult:
+        if dry_run or not self.can_write:
+            return ConnectorResult("DRY RUN archive selected Mail messages", {"requires_approval": True})
+        script = '''tell application "Mail"
+repeat with m in selection
+  move m to mailbox "Archive"
+end repeat
+end tell'''
+        return ConnectorResult(run_osa(script), {"source": self.source})
+
+    def selected_attachments(self, limit: int = 20) -> list[ConnectorResult]:
+        script = '''tell application "Mail"
+set out to {}
+set i to 0
+repeat with m in selection
+  repeat with a in mail attachments of m
+    set i to i + 1
+    set end of out to "Attachment: " & (name of a) & " | Message: " & (subject of m)
+    if i >= ''' + str(max(1, min(limit, 100))) + ''' then exit repeat
+  end repeat
+end repeat
+return out
+end tell'''
+        out = run_osa(script)
+        return self._split_results(out, "mail_attachments")
+
+    def thread_summary(self, query: str) -> ConnectorResult:
+        results = self.search_messages(query, limit=10)
+        if not results:
+            return ConnectorResult("no matching mail thread found", {"source": self.source})
+        return ConnectorResult("\n".join(r.text for r in results), {"source": self.source, "count": len(results)})
