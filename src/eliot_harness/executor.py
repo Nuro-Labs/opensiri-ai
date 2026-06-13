@@ -6,6 +6,8 @@ import subprocess
 from dataclasses import dataclass
 
 from .connectors.files import FilesConnector
+from .connectors.browser import BrowserConnector
+from .connectors.contacts import ContactsConnector
 from .connectors.mail import MailConnector
 from .connectors.memory import MemoryConnector
 from .connectors.messages_index import MessagesIndexConnector
@@ -13,6 +15,7 @@ from .connectors.web import WebConnector
 from .connectors.notes import NotesConnector
 from .connectors.reminders import RemindersConnector
 from .connectors.calendar import CalendarConnector
+from .connectors.system_control import SystemControlConnector
 from . import mac_ax
 from .local_index import LocalIndex
 from .permissions import PermissionState, Source
@@ -31,11 +34,14 @@ class Executor:
         self.web = web
         self.local_index = local_index
         self.files = FilesConnector(file_roots)
+        self.browser = BrowserConnector()
+        self.contacts = ContactsConnector()
         self.mail = MailConnector()
         self.messages_index = MessagesIndexConnector()
         self.notes = NotesConnector()
         self.reminders = RemindersConnector()
         self.calendar = CalendarConnector()
+        self.system = SystemControlConnector()
         if permissions:
             self.files.can_read = permissions.can_read(Source.FILES)
             self.mail.can_read = permissions.can_read(Source.MAIL)
@@ -77,6 +83,20 @@ class Executor:
             return ExecutionResult(self._file_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
         if name == "reminders_list":
             return ExecutionResult(self._reminders_list(int(args.get("limit", 20))), terminal=True)
+        if name == "calendar_free_busy":
+            return ExecutionResult(self.calendar.free_busy(args.get("day"), args.get("time_text")).text, terminal=True)
+        if name == "contacts_resolve":
+            return ExecutionResult("\n".join(r.text for r in self.contacts.resolve_contact(str(args.get("name", "")), int(args.get("limit", 5)))), terminal=True)
+        if name == "browser_open_url":
+            return ExecutionResult(self.browser.open_url(str(args.get("url", "")), str(args.get("browser", "Google Chrome")), dry_run=False).text)
+        if name == "browser_history_search":
+            return ExecutionResult("\n".join(r.text for r in self.browser.search_history(str(args.get("query", "")), int(args.get("limit", 10)))) or "no browser history results", terminal=True)
+        if name == "browser_open_youtube_liked":
+            return ExecutionResult(self.browser.open_youtube_liked(dry_run=False).text)
+        if name == "browser_play_youtube":
+            return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=False).text)
+        if name == "system_control":
+            return ExecutionResult(self.system.execute(str(args.get("action", "status")), args).text, terminal=True)
         if name == "web_search":
             return ExecutionResult(self.web.execute("web_search", args).text if self.web else "web access unavailable")
         if name == "invoke_intent":

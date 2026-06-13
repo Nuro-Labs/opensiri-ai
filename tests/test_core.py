@@ -57,6 +57,11 @@ def test_executor_local_search_tool(tmp_path):
     assert "budget" in result.output.lower()
 
 
+def test_system_control_dry_run():
+    from eliot_harness.connectors.system_control import SystemControlConnector
+    assert "DRY RUN" in SystemControlConnector().set_volume(25).text
+
+
 def test_model_parse_action_structured():
     client = EliotModelClient()
     msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}
