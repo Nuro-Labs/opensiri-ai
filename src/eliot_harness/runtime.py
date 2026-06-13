@@ -47,13 +47,17 @@ class HarnessRuntime:
         messages: list[dict[str, Any]] = [{"role": "system", "content": ELIOT_SYSTEM}]
         result = "none"
         target_app: str | None = None
+        last_tool_call_id: str | None = None
         for turn in range(max_turns):
             if live_ax:
                 snap = mac_ax.observe(target_app)
                 app, ui_tree = snap.app_name, snap.tree_text
             ctx = self.context.compile(task).render()
             obs = make_observation(task, app, ui_tree, result, ctx)
-            messages.append({"role": "user" if turn == 0 else "tool", "content": obs})
+            if turn == 0:
+                messages.append({"role": "user", "content": obs})
+            else:
+                messages.append({"role": "tool", "tool_call_id": last_tool_call_id or f"call_{turn - 1}", "content": obs})
             model_result = self.model.complete(messages)
             action = model_result.action
             rec: dict[str, Any] = {"turn": turn, "obs": obs, "action": action.__dict__ if action else None, "latency_s": round(model_result.latency_s, 3)}
@@ -62,7 +66,8 @@ class HarnessRuntime:
                 transcript.add(rec)
                 append_audit(self.audit_path, {"event": "unparseable", "record": rec})
                 break
-            messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": f"call_{turn}", "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
+            last_tool_call_id = f"call_{turn}"
+            messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": last_tool_call_id, "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
             policy = self.policy.evaluate(action, obs)
             verdict = policy.guard
             rec["policy"] = {"decision": policy.decision.value, "reason": policy.reason, "tier": policy.tier.value}

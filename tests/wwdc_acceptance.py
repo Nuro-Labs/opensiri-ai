@@ -37,6 +37,9 @@ def run_task(runtime: HarnessRuntime, task: str, live_ax: bool = False, max_turn
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model-url", default="http://localhost:8082")
+    ap.add_argument("--model-name", default="default_model")
+    ap.add_argument("--model-api-key-env", default="OPENSIRI_MODEL_API_KEY")
+    ap.add_argument("--model-auth-header", default=os.environ.get("OPENSIRI_MODEL_AUTH_HEADER", "api-key"))
     ap.add_argument("--out", default="results/wwdc_acceptance.json")
     ap.add_argument("--enable-web", action="store_true")
     args = ap.parse_args()
@@ -47,15 +50,16 @@ def main() -> int:
     memory = MemoryConnector(memory_client)
     web = WebConnector(enabled=args.enable_web)
     perms = PermissionState(read_sources={Source.HYPERSAVE} if memory_client else set(), network_enabled=args.enable_web)
+    model = EliotModelClient(args.model_url, args.model_name, api_key=os.environ.get(args.model_api_key_env), auth_header=args.model_auth_header)
     runtime_safe = HarnessRuntime(
-        model=EliotModelClient(args.model_url, "default_model"),
+        model=model,
         context=ContextCompiler(perms, memory_client),
         executor=Executor(memory=memory, web=web),
         approval=DenyAllApproval(),
         audit_path="/tmp/opensiri_wwdc_audit.jsonl",
     )
     runtime_approve = HarnessRuntime(
-        model=EliotModelClient(args.model_url, "default_model"),
+        model=model,
         context=ContextCompiler(perms, memory_client),
         executor=Executor(memory=memory, web=web),
         approval=AutoApprove(),
