@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path
 
 from .base import Connector, ConnectorResult
+from ..vision import ImageUnderstandingClient
 
 
 class VisualConnector(Connector):
@@ -26,8 +27,12 @@ class VisualConnector(Connector):
         if r.returncode != 0 or not path.exists():
             return ConnectorResult("screenshot cancelled or failed")
         text = self.ocr_image(path)
+        caption = self.describe_image(path)
         if text:
-            return ConnectorResult(f"screenshot captured: {path}\nOCR:\n{text[:2000]}", {"path": str(path), "source": self.source, "ocr": True})
+            suffix = f"\nVision:\n{caption[:2000]}" if caption else ""
+            return ConnectorResult(f"screenshot captured: {path}\nOCR:\n{text[:2000]}{suffix}", {"path": str(path), "source": self.source, "ocr": True, "vision": bool(caption)})
+        if caption:
+            return ConnectorResult(f"screenshot captured: {path}\nVision:\n{caption[:2000]}", {"path": str(path), "source": self.source, "ocr": False, "vision": True})
         return ConnectorResult(f"screenshot captured: {path}", {"path": str(path), "source": self.source, "ocr": False})
 
     def ocr_image(self, path: str | Path) -> str:
@@ -39,6 +44,9 @@ class VisualConnector(Connector):
         except Exception:
             return ""
         return r.stdout.strip() if r.returncode == 0 else ""
+
+    def describe_image(self, path: str | Path, prompt: str | None = None) -> str:
+        return ImageUnderstandingClient().describe(path, prompt or "Describe this screenshot for a Mac assistant. Include visible text and UI state.")
 
     def read_context(self, task: str) -> list[ConnectorResult]:
         if any(x in task.lower() for x in ("screen", "screenshot", "image", "looking at", "movie is this")):

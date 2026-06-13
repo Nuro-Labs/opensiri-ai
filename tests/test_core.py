@@ -121,6 +121,19 @@ def test_sensitive_indexers_fail_safely():
     assert p.read_context("photos") == []
 
 
+def test_photos_connector_requires_enable_for_export(tmp_path):
+    from eliot_harness.connectors.photos import PhotosConnector
+    c = PhotosConnector()
+    assert c.export_selection(tmp_path) == []
+
+
+def test_vision_client_unconfigured(tmp_path):
+    from eliot_harness.vision import ImageUnderstandingClient
+    img = tmp_path / "x.jpg"
+    img.write_bytes(b"not really an image")
+    assert ImageUnderstandingClient(base_url="", model="").describe(img) == ""
+
+
 def test_reference_resolver_latest_draft():
     store = ReferenceStore()
     store.add("draft", "email draft", "hello")
@@ -174,5 +187,5 @@ def test_visual_connector_disabled():
 
 def test_indexer_unsupported_source():
     from eliot_harness.indexer import unsupported_source
-    item = unsupported_source("photos")
-    assert item.source == "photos" and "not implemented" in item.content
+    item = unsupported_source("unknown")
+    assert item.source == "unknown" and "not implemented" in item.content

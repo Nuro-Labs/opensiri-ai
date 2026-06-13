@@ -17,7 +17,7 @@ let sourceManifests: [SourceManifest] = [
     .init(id: "reminders", title: "Reminders", sensitivity: "medium", read: "list reminders", write: "create/complete"),
     .init(id: "mail", title: "Mail", sensitivity: "hyper", read: "subjects/selected", write: "draft/send with approval"),
     .init(id: "messages", title: "Messages", sensitivity: "hyper", read: "opt-in local database", write: "draft/send with approval"),
-    .init(id: "photos", title: "Photos", sensitivity: "hyper", read: "album metadata", write: "approval-only scaffold"),
+    .init(id: "photos", title: "Photos", sensitivity: "hyper", read: "metadata, selected export, OCR, optional VLM captions", write: "approval-only scaffold"),
     .init(id: "visual", title: "Visual OCR", sensitivity: "hyper", read: "interactive screenshot OCR", write: "none"),
     .init(id: "maps", title: "Maps", sensitivity: "medium", read: "directions/search", write: "open directions"),
     .init(id: "music", title: "Music", sensitivity: "medium", read: "library search", write: "play/pause"),

@@ -44,6 +44,8 @@ enum HarnessBridge {
         p.arguments = args
         var env = ProcessInfo.processInfo.environment
         env["PYTHONPATH"] = root.appendingPathComponent("src").path
+        if !state.visionModelURL.isEmpty { env["OPENSIRI_VLM_URL"] = state.visionModelURL }
+        if !state.visionModelName.isEmpty { env["OPENSIRI_VLM_MODEL"] = state.visionModelName }
         if (state.enableMemory || state.enableMemoryWrite), env["HYPERSAVE_API_KEY"] == nil, let key = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key") { env["HYPERSAVE_API_KEY"] = key }
         if state.enableMemory || state.enableMemoryWrite { env["HYPERSAVE_BASE_URL"] = state.hypersaveBaseURL }
         p.environment = env

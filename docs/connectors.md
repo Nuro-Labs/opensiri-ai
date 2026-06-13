@@ -15,7 +15,7 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `MessagesConnector`: drafts by default; sending is approval-only.
 - `SafariConnector`: reads tab names when enabled.
 - `MessagesIndexConnector`: opt-in local `chat.db` read-only recent message extraction; requires Full Disk Access.
-- `PhotosConnector`: opt-in Photos album metadata scaffold.
+- `PhotosConnector`: opt-in Photos metadata, selected-photo export, OCR, and optional local VLM captions.
 - `VisualConnector`: disabled by default; interactive screenshot capture with Vision OCR helper when available.
 - `MapsConnector`: Apple Maps URL handoff for directions/search.
 - `MusicConnector`: Music app play/search dry-run and AppleScript handoff.
@@ -37,3 +37,5 @@ Each connector must declare:
 - whether content is trusted or untrusted
 
 The macOS app includes in-app approval cards, transcript access, audit-log access, and recent session history for debugging and continuity.
+
+Eliot is not a native vision model. For image understanding, configure an OpenAI-compatible local VLM with `OPENSIRI_VLM_URL` and `OPENSIRI_VLM_MODEL`, or set the Vision model fields in Settings. Photos/Visual connectors then feed OCR/caption summaries into Eliot.

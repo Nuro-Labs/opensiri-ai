@@ -10,6 +10,8 @@ struct SettingsView: View {
             Section("Model") {
                 TextField("Model URL", text: $state.modelURL)
                 TextField("Model name", text: $state.modelName)
+                TextField("Vision model URL", text: $state.visionModelURL)
+                TextField("Vision model name", text: $state.visionModelName)
                 TextField("Repo root", text: $state.repoRoot)
                 Button("Save Settings") { state.persist() }
             }
@@ -30,7 +32,7 @@ struct SettingsView: View {
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)
                 Toggle("Mail Read", isOn: $state.enableMail)
                 Toggle("Messages Read", isOn: $state.enableMessages)
-                Toggle("Photos Metadata", isOn: $state.enablePhotos)
+                Toggle("Photos + Image Understanding", isOn: $state.enablePhotos)
                 Toggle("Maps", isOn: $state.enableMaps)
                 Toggle("Music", isOn: $state.enableMusic)
                 Toggle("Podcasts", isOn: $state.enablePodcasts)

@@ -89,9 +89,15 @@ def index_messages(limit: int = 50) -> list[IndexedItem]:
     return [IndexedItem("messages", "Message", r.text, "messages://local", "hyper") for r in conn.recent_messages(limit=limit)]
 
 
-def index_photos() -> list[IndexedItem]:
+def index_photos(understand_selection: bool = False) -> list[IndexedItem]:
     conn = PhotosConnector(); conn.can_read = True
-    return [IndexedItem("photos", "Photos metadata", r.text, "photos://metadata", "hyper") for r in conn.read_context("photos albums")]
+    if understand_selection:
+        results = conn.understand_selection("Describe this photo for personal memory search.")
+        return [IndexedItem("photos", "Photo understanding", r.text, "photos://selected", "hyper") for r in results]
+    results = conn.selected_metadata(limit=10) or conn.recent_metadata(limit=10)
+    if not results:
+        results = conn.read_context("photos albums")
+    return [IndexedItem("photos", "Photos metadata", r.text, "photos://metadata", "hyper") for r in results]
 
 
 def main() -> None:
@@ -99,6 +105,7 @@ def main() -> None:
     ap.add_argument("--sources", default="files,calendar,reminders,notes,safari")
     ap.add_argument("--files-root", action="append", default=[])
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--photos-understand-selected", action="store_true", help="export selected Photos assets and run OCR/optional VLM before indexing")
     ap.add_argument("--out", default="results/indexer_report.json")
     args = ap.parse_args()
 
@@ -124,7 +131,7 @@ def main() -> None:
         elif source == "messages":
             items.extend(index_messages())
         elif source == "photos":
-            items.extend(index_photos())
+            items.extend(index_photos(args.photos_understand_selected))
 
     results = []
     for item in items:

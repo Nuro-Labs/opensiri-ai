@@ -58,6 +58,8 @@ final class AppState: ObservableObject {
     @Published var status: String = "Idle"
     @Published var modelURL: String = UserDefaults.standard.string(forKey: "modelURL") ?? "http://localhost:8081"
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
+    @Published var visionModelURL: String = UserDefaults.standard.string(forKey: "visionModelURL") ?? ""
+    @Published var visionModelName: String = UserDefaults.standard.string(forKey: "visionModelName") ?? ""
     @Published var hypersaveBaseURL: String = UserDefaults.standard.string(forKey: "hypersaveBaseURL") ?? "https://api.hypersave.io"
     @Published var repoRoot: String = AppState.initialRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
@@ -95,6 +97,7 @@ final class AppState: ObservableObject {
         if enableMail { chips.append("Mail") }
         if enableMessages { chips.append("Messages") }
         if enablePhotos { chips.append("Photos") }
+        if !visionModelURL.isEmpty && !visionModelName.isEmpty { chips.append("Vision Model") }
         if enableMaps { chips.append("Maps") }
         if enableMusic { chips.append("Music") }
         if enablePodcasts { chips.append("Podcasts") }
@@ -144,6 +147,8 @@ final class AppState: ObservableObject {
     func persist() {
         UserDefaults.standard.set(modelURL, forKey: "modelURL")
         UserDefaults.standard.set(modelName, forKey: "modelName")
+        UserDefaults.standard.set(visionModelURL, forKey: "visionModelURL")
+        UserDefaults.standard.set(visionModelName, forKey: "visionModelName")
         UserDefaults.standard.set(hypersaveBaseURL, forKey: "hypersaveBaseURL")
         UserDefaults.standard.set(repoRoot, forKey: "repoRoot")
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")
