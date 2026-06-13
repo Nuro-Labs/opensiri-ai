@@ -45,6 +45,7 @@ struct PaletteView: View {
 
     func run() {
         guard !state.isRunning, !state.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if state.enableMemoryWrite { state.enableMemory = true }
         do { try HarnessBridge.run(task: state.task, state: state) }
         catch { state.output = "Failed to start harness: \(error)"; state.status = "Error"; state.isRunning = false }
     }

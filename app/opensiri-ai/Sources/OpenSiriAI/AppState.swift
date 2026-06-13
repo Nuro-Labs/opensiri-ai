@@ -76,7 +76,7 @@ final class AppState: ObservableObject {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let configURL = home.appendingPathComponent(".config/opensiri-ai/config.json")
         let sources: [String: [String: Any]] = [
-            "hypersave": ["read": enableMemory, "write": enableMemoryWrite, "max_sensitivity": "high"],
+            "hypersave": ["read": enableMemory || enableMemoryWrite, "write": enableMemoryWrite, "max_sensitivity": "high"],
             "files": ["read": enableFiles, "write": false, "max_sensitivity": "high"],
             "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
             "photos": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],

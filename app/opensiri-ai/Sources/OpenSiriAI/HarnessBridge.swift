@@ -21,7 +21,7 @@ enum HarnessBridge {
 
         var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", dataRoot.appendingPathComponent("results/app-audit.jsonl").path]
         args += ["--config", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/opensiri-ai/config.json").path]
-        if state.enableMemory { args.append("--enable-memory") }
+        if state.enableMemory || state.enableMemoryWrite { args.append("--enable-memory") }
         if state.enableMemoryWrite { args.append("--enable-memory-write") }
         if state.enableFiles { args.append("--enable-files") }
         if state.enableWeb { args.append("--enable-web") }
@@ -34,7 +34,7 @@ enum HarnessBridge {
         p.arguments = args
         var env = ProcessInfo.processInfo.environment
         env["PYTHONPATH"] = root.appendingPathComponent("src").path
-        if state.enableMemory, env["HYPERSAVE_API_KEY"] == nil, let key = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key") { env["HYPERSAVE_API_KEY"] = key }
+        if (state.enableMemory || state.enableMemoryWrite), env["HYPERSAVE_API_KEY"] == nil, let key = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key") { env["HYPERSAVE_API_KEY"] = key }
         p.environment = env
 
         let pipe = Pipe()
