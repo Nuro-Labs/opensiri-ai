@@ -18,7 +18,7 @@ class MemoryConnector(Connector):
         try:
             data = self.client.search(task, limit=5)
         except Exception as e:
-            return [ConnectorResult(text=f"Hypersave unavailable: {type(e).__name__}")]
+            return [ConnectorResult(text=f"Hypersave unavailable: {type(e).__name__}: {e}")]
         out: list[ConnectorResult] = []
         for key in ("results", "memories", "documents", "facts"):
             vals = data.get(key)
@@ -54,7 +54,7 @@ class MemoryConnector(Connector):
                     break
             return "\n".join(snippets) if snippets else answer
         except Exception as e:
-            return f"memory unavailable: {type(e).__name__}"
+            return f"memory unavailable: {type(e).__name__}: {e}"
 
     def save(self, content: str, source: str, sensitivity: str = "medium") -> str:
         if not self.client:
@@ -62,4 +62,4 @@ class MemoryConnector(Connector):
         try:
             return str(self.client.save_and_wait(content, source=source, sensitivity=sensitivity))
         except Exception as e:
-            return f"memory unavailable: {type(e).__name__}"
+            return f"memory unavailable: {type(e).__name__}: {e}"
