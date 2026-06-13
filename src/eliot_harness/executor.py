@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 
 from .connectors.memory import MemoryConnector
+from .connectors.web import WebConnector
 from . import mac_ax
 from .schema import Action
 
@@ -17,8 +18,9 @@ class ExecutionResult:
 
 
 class Executor:
-    def __init__(self, memory: MemoryConnector | None = None, shell_timeout: float = 30.0):
+    def __init__(self, memory: MemoryConnector | None = None, web: WebConnector | None = None, shell_timeout: float = 30.0):
         self.memory = memory
+        self.web = web
         self.shell_timeout = shell_timeout
 
     def execute(self, action: Action, snapshot=None) -> ExecutionResult:
@@ -42,6 +44,8 @@ class Executor:
             return ExecutionResult(self.memory.ask(str(args.get("query", ""))) if self.memory else "memory unavailable")
         if name == "memory_save":
             return ExecutionResult(self.memory.save(str(args.get("content", "")), str(args.get("source", "eliot")), str(args.get("sensitivity", "medium"))) if self.memory else "memory unavailable")
+        if name == "web_search":
+            return ExecutionResult(self.web.execute("web_search", args).text if self.web else "web access unavailable")
         if name == "invoke_intent":
             return ExecutionResult(self._invoke_intent(str(args.get("app", "")), str(args.get("intent", "")), args.get("params") or {}))
         if name == "read":
