@@ -87,3 +87,12 @@ scripts/install-finder-quick-action.sh
 ```
 
 Then connect the installed script from Shortcuts.app or Automator as a Finder Quick Action. This keeps the actual execution path inside the same guarded harness.
+
+## Personal Context Indexing
+
+```bash
+opensiri-index --dry-run --files-root ~/Documents
+opensiri-index --sources files,calendar,reminders,notes,safari --files-root ~/Documents
+```
+
+See `docs/indexing.md`.

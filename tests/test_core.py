@@ -137,3 +137,9 @@ def test_visual_connector_disabled():
     from eliot_harness.connectors.visual import VisualConnector
     c = VisualConnector()
     assert "disabled" in c.capture_interactive().text
+
+
+def test_indexer_unsupported_source():
+    from eliot_harness.indexer import unsupported_source
+    item = unsupported_source("photos")
+    assert item.source == "photos" and "not implemented" in item.content
