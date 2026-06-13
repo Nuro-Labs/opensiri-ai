@@ -47,6 +47,16 @@ def test_local_index_roundtrip(tmp_path):
     assert hits and hits[0].source == "mail"
 
 
+def test_executor_local_search_tool(tmp_path):
+    from eliot_harness.executor import Executor
+    from eliot_harness.local_index import LocalIndex
+    from eliot_harness.schema import Action
+    idx = LocalIndex(tmp_path / "idx.sqlite3")
+    idx.upsert("files", "budget.txt", "Q3 budget spreadsheet", "/tmp/budget.txt", "high")
+    result = Executor(local_index=idx).execute(Action("local_search", {"query": "Q3 budget", "limit": 3}))
+    assert "budget" in result.output.lower()
+
+
 def test_model_parse_action_structured():
     client = EliotModelClient()
     msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}

@@ -93,7 +93,7 @@ def main() -> None:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
         read_sources.add(Source.FILES)
-    for source in ("mail", "messages", "photos", "visual", "maps", "music", "podcasts"):
+    for source in ("mail", "messages", "reminders", "photos", "visual", "maps", "music", "podcasts"):
         if cfg.sources[source].read:
             read_sources.add(Source(source))
     perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=cfg.network_enabled)
@@ -101,7 +101,7 @@ def main() -> None:
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
         context=ContextCompiler(perms, memory_client, registry, local_index),
-        executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled), permissions=perms),
+        executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled), permissions=perms, local_index=local_index, file_roots=args.files_root or None),
         approval=approval,
         audit_path=args.audit_log,
     )
