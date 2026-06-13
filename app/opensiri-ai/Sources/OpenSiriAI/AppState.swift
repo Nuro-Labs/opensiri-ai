@@ -10,6 +10,7 @@ final class AppState: ObservableObject {
     @Published var repoRoot: String = AppState.initialRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
+    @Published var enableMemoryWrite: Bool = UserDefaults.standard.bool(forKey: "enableMemoryWrite")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
@@ -64,6 +65,7 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(repoRoot, forKey: "repoRoot")
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")
         UserDefaults.standard.set(enableMemory, forKey: "enableMemory")
+        UserDefaults.standard.set(enableMemoryWrite, forKey: "enableMemoryWrite")
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
@@ -74,7 +76,7 @@ final class AppState: ObservableObject {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let configURL = home.appendingPathComponent(".config/opensiri-ai/config.json")
         let sources: [String: [String: Any]] = [
-            "hypersave": ["read": enableMemory, "write": false, "max_sensitivity": "high"],
+            "hypersave": ["read": enableMemory, "write": enableMemoryWrite, "max_sensitivity": "high"],
             "files": ["read": enableFiles, "write": false, "max_sensitivity": "high"],
             "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
             "photos": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],

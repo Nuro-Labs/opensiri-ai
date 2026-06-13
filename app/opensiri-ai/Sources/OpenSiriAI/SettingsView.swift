@@ -20,6 +20,7 @@ struct SettingsView: View {
             }
             Section("Quick Source Toggles") {
                 Toggle("Hypersave Memory", isOn: $state.enableMemory)
+                Toggle("Allow Memory Writes", isOn: $state.enableMemoryWrite)
                 Toggle("Files / Finder Selection", isOn: $state.enableFiles)
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)

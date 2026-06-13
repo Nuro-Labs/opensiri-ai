@@ -34,6 +34,7 @@ Approval modes:
 Source flags:
 
 - `--enable-memory`
+- `--enable-memory-write`
 - `--enable-files --files-root <path>`
 - `--enable-web`
 - `--enable-visual`

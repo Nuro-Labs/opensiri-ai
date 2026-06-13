@@ -23,6 +23,7 @@ struct PaletteView: View {
                     Text("Auto yes").tag("yes")
                 }.frame(width: 170)
                 Toggle("Memory", isOn: $state.enableMemory)
+                Toggle("Mem Write", isOn: $state.enableMemoryWrite)
                 Toggle("Files", isOn: $state.enableFiles)
                 Toggle("Web", isOn: $state.enableWeb)
                 Toggle("Visual", isOn: $state.enableVisual)
