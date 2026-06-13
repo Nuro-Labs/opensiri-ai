@@ -88,6 +88,15 @@ def test_mail_messages_do_not_send_by_default():
     assert "SEND REQUIRES APPROVAL" in MessagesConnector().send_message("Alex", "Hi").text
 
 
+def test_maps_music_podcasts_dry_runs():
+    from eliot_harness.connectors.maps import MapsConnector
+    from eliot_harness.connectors.music import MusicConnector
+    from eliot_harness.connectors.podcasts import PodcastsConnector
+    assert "maps.apple.com" in MapsConnector().open_directions("San Francisco").text
+    assert "DRY RUN" in MusicConnector().play_query("Blue in Green").text
+    assert "podcasts.apple.com" in PodcastsConnector().open_search("Waveform").text
+
+
 def test_reference_resolver_latest_draft():
     store = ReferenceStore()
     store.add("draft", "email draft", "hello")
@@ -95,7 +104,7 @@ def test_reference_resolver_latest_draft():
 
 
 def test_source_manifests_cover_core_sources():
-    for name in ["hypersave", "files", "calendar", "contacts", "notes", "reminders", "mail", "messages", "safari", "photos", "web"]:
+    for name in ["hypersave", "files", "calendar", "contacts", "notes", "reminders", "mail", "messages", "maps", "music", "podcasts", "safari", "photos", "web"]:
         assert name in MANIFESTS
     assert "Calendar" in manifest_table()
 

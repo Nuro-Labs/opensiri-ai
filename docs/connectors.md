@@ -16,6 +16,9 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `MessagesConnector`: drafts by default; sending is approval-only.
 - `SafariConnector`: reads tab names when enabled.
 - `VisualConnector`: disabled by default; interactive screenshot capture scaffold for future OCR/VLM.
+- `MapsConnector`: Apple Maps URL handoff for directions/search.
+- `MusicConnector`: Music app play/search dry-run and AppleScript handoff.
+- `PodcastsConnector`: Apple Podcasts search URL handoff.
 
 ## Planned
 

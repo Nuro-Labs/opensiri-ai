@@ -32,6 +32,9 @@ def main() -> None:
     ap.add_argument("--files-root", action="append", default=[])
     ap.add_argument("--config", default=None)
     ap.add_argument("--enable-visual", action="store_true")
+    ap.add_argument("--enable-maps", action="store_true")
+    ap.add_argument("--enable-music", action="store_true")
+    ap.add_argument("--enable-podcasts", action="store_true")
     ap.add_argument("--live-ax", action="store_true", help="observe the live macOS Accessibility tree each turn")
     args = ap.parse_args()
 
@@ -43,6 +46,9 @@ def main() -> None:
         cfg.sources["files"].read = True
     if args.enable_visual:
         cfg.sources["photos"].read = True
+    for flag, source in [(args.enable_maps, "maps"), (args.enable_music, "music"), (args.enable_podcasts, "podcasts")]:
+        if flag:
+            cfg.sources[source].read = True
     if args.enable_memory:
         cfg.sources["hypersave"].read = True
     if args.enable_memory_write:
@@ -57,6 +63,9 @@ def main() -> None:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
         read_sources.add(Source.FILES)
+    for source in ("maps", "music", "podcasts"):
+        if cfg.sources[source].read:
+            read_sources.add(Source(source))
     perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=cfg.network_enabled)
     approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "yes": AutoApprove()}[args.approval]
     runtime = HarnessRuntime(

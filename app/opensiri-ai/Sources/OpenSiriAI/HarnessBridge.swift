@@ -26,6 +26,9 @@ enum HarnessBridge {
         if state.enableFiles { args.append("--enable-files") }
         if state.enableWeb { args.append("--enable-web") }
         if state.enableVisual { args.append("--enable-visual") }
+        if state.enableMaps { args.append("--enable-maps") }
+        if state.enableMusic { args.append("--enable-music") }
+        if state.enablePodcasts { args.append("--enable-podcasts") }
         if state.liveAX { args.append("--live-ax") }
 
         let p = Process()

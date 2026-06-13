@@ -28,6 +28,9 @@ final class AppState: ObservableObject {
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
+    @Published var enableMaps: Bool = UserDefaults.standard.bool(forKey: "enableMaps")
+    @Published var enableMusic: Bool = UserDefaults.standard.bool(forKey: "enableMusic")
+    @Published var enablePodcasts: Bool = UserDefaults.standard.bool(forKey: "enablePodcasts")
     @Published var liveAX: Bool = true
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
@@ -41,6 +44,9 @@ final class AppState: ObservableObject {
         if enableFiles { chips.append("Files") }
         if enableWeb { chips.append("Web") }
         if enableVisual { chips.append("Visual") }
+        if enableMaps { chips.append("Maps") }
+        if enableMusic { chips.append("Music") }
+        if enablePodcasts { chips.append("Podcasts") }
         return chips
     }
 
@@ -95,6 +101,9 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
+        UserDefaults.standard.set(enableMaps, forKey: "enableMaps")
+        UserDefaults.standard.set(enableMusic, forKey: "enableMusic")
+        UserDefaults.standard.set(enablePodcasts, forKey: "enablePodcasts")
         writeHarnessConfig()
     }
 
@@ -110,6 +119,9 @@ final class AppState: ObservableObject {
             "contacts": ["read": false, "write": false, "max_sensitivity": "high"],
             "notes": ["read": false, "write": false, "max_sensitivity": "high"],
             "reminders": ["read": false, "write": false, "max_sensitivity": "medium"],
+            "maps": ["read": enableMaps, "write": false, "max_sensitivity": "medium"],
+            "music": ["read": enableMusic, "write": false, "max_sensitivity": "medium"],
+            "podcasts": ["read": enablePodcasts, "write": false, "max_sensitivity": "medium"],
             "mail": ["read": false, "write": false, "max_sensitivity": "hyper"],
             "messages": ["read": false, "write": false, "max_sensitivity": "hyper"],
             "safari": ["read": false, "write": false, "max_sensitivity": "high"]

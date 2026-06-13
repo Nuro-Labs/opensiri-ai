@@ -28,6 +28,9 @@ struct SettingsView: View {
                 Toggle("Files / Finder Selection", isOn: $state.enableFiles)
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)
+                Toggle("Maps", isOn: $state.enableMaps)
+                Toggle("Music", isOn: $state.enableMusic)
+                Toggle("Podcasts", isOn: $state.enablePodcasts)
                 Toggle("Live Accessibility Tree", isOn: $state.liveAX)
                 Button("Save Source Settings") { state.persist(); keyStatus = "Settings saved" }
             }
