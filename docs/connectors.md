@@ -8,8 +8,8 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `FilesConnector`: reads allowed roots, detects Finder selection, extracts text from plain text, Office/RTF via `textutil`, and PDFs via `pdftotext`/Spotlight metadata when available.
 - `WebConnector`: disabled by default; world-knowledge access only when explicitly enabled.
 - `NotesConnector`: reads recent note names and drafts/creates notes with approval-gated writes.
-- `RemindersConnector`: reads reminders and creates reminders with approval-gated writes.
-- `CalendarConnector`: reads calendar events and creates events with approval-gated writes.
+- `RemindersConnector`: reads reminders and creates reminders with approval-gated writes via EventKit helper with AppleScript fallback.
+- `CalendarConnector`: reads calendar events and creates events with approval-gated writes via EventKit helper with AppleScript fallback.
 - `ContactsConnector`: scoped name lookup, no broad contact dump.
 - `MailConnector`: opt-in selected/recent message extraction; drafts by default; sending is approval-only.
 - `MessagesConnector`: drafts by default; sending is approval-only.

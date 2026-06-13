@@ -79,6 +79,11 @@ def test_app_connectors_dry_run_writes():
     assert "DRY RUN" in CalendarConnector().create_event("Meeting").text
 
 
+def test_native_helper_scripts_exist():
+    assert Path("scripts/eventkit_bridge.swift").exists()
+    assert Path("scripts/ocr_image.swift").exists()
+
+
 def test_mail_messages_do_not_send_by_default():
     from eliot_harness.connectors.mail import MailConnector
     from eliot_harness.connectors.messages import MessagesConnector
