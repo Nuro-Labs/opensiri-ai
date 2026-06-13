@@ -35,10 +35,31 @@ class MemoryConnector(Connector):
     def ask(self, query: str) -> str:
         if not self.client:
             return "memory unavailable"
-        data = self.client.ask(query)
-        return str(data.get("answer") or data)
+        try:
+            data = self.client.ask(query)
+            answer = str(data.get("answer") or data)
+            if "don't have any saved information" not in answer.lower() and "could not find" not in answer.lower():
+                return answer
+            # Fallback to raw search; fresh async writes sometimes index before answer synthesis sees them.
+            search = self.client.search(query, limit=5)
+            snippets = []
+            for key in ("results", "memories", "documents", "facts"):
+                vals = search.get(key)
+                if isinstance(vals, list):
+                    for item in vals[:5]:
+                        text = item.get("content") or item.get("text") or item.get("summary") or item.get("value") or str(item)
+                        s = str(text).strip()
+                        if s and "undefined" not in s.lower():
+                            snippets.append(s[:300])
+                    break
+            return "\n".join(snippets) if snippets else answer
+        except Exception as e:
+            return f"memory unavailable: {type(e).__name__}"
 
     def save(self, content: str, source: str, sensitivity: str = "medium") -> str:
         if not self.client:
             return "memory unavailable"
-        return str(self.client.save(content, source=source, sensitivity=sensitivity))
+        try:
+            return str(self.client.save_and_wait(content, source=source, sensitivity=sensitivity))
+        except Exception as e:
+            return f"memory unavailable: {type(e).__name__}"

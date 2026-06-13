@@ -42,6 +42,13 @@ def test_model_parse_action_structured():
     assert client._parse_action(msg).args["name"] == "Notes"
 
 
+def test_memory_connector_handles_missing_client():
+    from eliot_harness.connectors.memory import MemoryConnector
+    c = MemoryConnector(None)
+    assert c.ask("x") == "memory unavailable"
+    assert c.save("x", "test") == "memory unavailable"
+
+
 def test_policy_denies_memory_without_permission():
     engine = PolicyEngine(PermissionState())
     result = engine.evaluate(normalize_action({"name": "memory_ask", "args": {"query": "x"}}))
