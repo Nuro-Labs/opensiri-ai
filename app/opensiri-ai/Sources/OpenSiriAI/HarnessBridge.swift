@@ -5,7 +5,7 @@ enum HarnessBridge {
     static func run(task: String, state: AppState) throws {
         state.persist()
         let root = URL(fileURLWithPath: state.repoRoot)
-        let candidates = [root.appendingPathComponent(".venv/bin/python").path, "/Users/akhilponnada/Downloads/elliot/.venv/bin/python", "/usr/bin/python3"]
+        let candidates = [root.appendingPathComponent(".venv/bin/python").path, "/usr/bin/python3"]
         let python = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"
         let transcriptDir = root.appendingPathComponent("results/app-transcripts")
         try FileManager.default.createDirectory(at: transcriptDir, withIntermediateDirectories: true)
