@@ -45,15 +45,20 @@ enum HarnessBridge {
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             Task { @MainActor in state.output += "\n" + text }
+            Task { @MainActor in state.technicalLog += text }
         }
         p.terminationHandler = { proc in
             Task { @MainActor in
                 state.status = "Exited \(proc.terminationStatus)"
                 state.isRunning = false
                 state.process = nil
+                let final = state.technicalLog.trimmingCharacters(in: .whitespacesAndNewlines)
+                state.messages.append(ChatMessage(role: .assistant, text: final.isEmpty ? "No response." : final))
             }
         }
         state.output = ""
+        state.technicalLog = ""
+        state.messages.append(ChatMessage(role: .user, text: task))
         state.status = "Running"
         state.isRunning = true
         state.process = p

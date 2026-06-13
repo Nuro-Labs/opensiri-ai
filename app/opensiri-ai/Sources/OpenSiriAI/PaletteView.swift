@@ -31,12 +31,18 @@ struct PaletteView: View {
                 Spacer()
                 Button("Stop") { stop() }.disabled(!state.isRunning)
                 Button("Transcript") { openTranscript() }.disabled(state.lastTranscript.isEmpty)
+                Button("Clear") { clearConversation() }.disabled(state.isRunning)
                 Button("Run") { run() }.keyboardShortcut(.return, modifiers: [.command]).disabled(state.task.isEmpty || state.isRunning)
             }
-            HStack { Chip("Guarded"); Chip("AX Screen"); Chip("Hypersave"); Chip("Audit"); Chip("Permissions") }
-            ScrollView { Text(state.output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled).padding(12) }
-                .background(Color(NSColor.textBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
+            HStack { ForEach(state.sourceChips, id: \.self) { Chip($0) } }
+            ConversationView(messages: state.messages)
             if !state.lastTranscript.isEmpty { Text("Transcript: \(state.lastTranscript)").font(.caption).foregroundStyle(.secondary) }
+            DisclosureGroup("Technical log", isExpanded: $state.showTechnicalLog) {
+                ScrollView { Text(state.technicalLog.isEmpty ? "No technical output yet." : state.technicalLog).font(.system(.caption, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled).padding(10) }
+                    .frame(height: 120)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
         }
         .padding(24)
         .onAppear { focused = true }
@@ -55,6 +61,56 @@ struct PaletteView: View {
     func openTranscript() {
         guard !state.lastTranscript.isEmpty else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: state.lastTranscript)])
+    }
+
+    func clearConversation() {
+        state.messages = [ChatMessage(role: .system, text: "New conversation. Ask for a Mac action, file comparison, reminder, or personal-context question.")]
+        state.output = ""
+        state.technicalLog = ""
+    }
+}
+
+struct ConversationView: View {
+    let messages: [ChatMessage]
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(messages) { msg in
+                        MessageBubble(message: msg).id(msg.id)
+                    }
+                }
+                .padding(12)
+            }
+            .background(Color(NSColor.textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            .onChange(of: messages.count) { _, _ in
+                if let last = messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+            }
+        }
+    }
+}
+
+struct MessageBubble: View {
+    let message: ChatMessage
+    var body: some View {
+        HStack {
+            if message.role == .user { Spacer(minLength: 80) }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Text(message.text).textSelection(.enabled)
+            }
+            .padding(12)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+            if message.role != .user { Spacer(minLength: 80) }
+        }
+    }
+    var label: String {
+        switch message.role { case .user: "You"; case .assistant: "opensiri-ai"; case .system: "Ready" }
+    }
+    var background: Color {
+        switch message.role { case .user: Color.accentColor.opacity(0.18); case .assistant: Color.secondary.opacity(0.12); case .system: Color.green.opacity(0.10) }
     }
 }
 

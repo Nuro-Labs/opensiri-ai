@@ -1,9 +1,22 @@
 import Foundation
 
+struct ChatMessage: Identifiable, Equatable {
+    enum Role { case user, assistant, system }
+    let id = UUID()
+    let role: Role
+    let text: String
+    let date = Date()
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var task: String = ""
-    @Published var output: String = "Ready. Start Eliot, then ask for a Mac action or personal context."
+    @Published var output: String = ""
+    @Published var technicalLog: String = ""
+    @Published var showTechnicalLog: Bool = false
+    @Published var messages: [ChatMessage] = [
+        ChatMessage(role: .system, text: "Ask for a Mac action, file comparison, reminder, or personal-context question.")
+    ]
     @Published var status: String = "Idle"
     @Published var modelURL: String = UserDefaults.standard.string(forKey: "modelURL") ?? "http://localhost:8081"
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
@@ -19,6 +32,17 @@ final class AppState: ObservableObject {
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
     var process: Process?
+
+    var sourceChips: [String] {
+        var chips = ["Guarded", "Audit"]
+        if liveAX { chips.append("Screen") }
+        if enableMemory { chips.append("Memory") }
+        if enableMemoryWrite { chips.append("Memory Write") }
+        if enableFiles { chips.append("Files") }
+        if enableWeb { chips.append("Web") }
+        if enableVisual { chips.append("Visual") }
+        return chips
+    }
 
     static func isRepoRoot(_ path: String) -> Bool {
         FileManager.default.fileExists(atPath: path + "/src/eliot_harness")
