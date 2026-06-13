@@ -33,6 +33,7 @@ ActionName = Literal[
     "browser_open_youtube_liked",
     "browser_play_youtube",
     "system_control",
+    "mac_tool",
     "ask_user",
     "done",
 ]
@@ -79,6 +80,7 @@ TOOLS = [
     "browser_open_youtube_liked",
     "browser_play_youtube",
     "system_control",
+    "mac_tool",
     "ask_user",
     "done",
 ]
@@ -111,6 +113,7 @@ OPENAI_TOOLS = [
     {"type": "function", "function": {"name": "browser_open_youtube_liked", "description": "Open the signed-in user's YouTube liked videos page in Chrome.", "parameters": {"type": "object", "properties": {}, "required": []}}},
     {"type": "function", "function": {"name": "browser_play_youtube", "description": "Play or open the first visible YouTube video in Chrome.", "parameters": {"type": "object", "properties": {}, "required": []}}},
     {"type": "function", "function": {"name": "system_control", "description": "Read or change local Mac system controls: status, set_volume, set_brightness, dark_mode, dnd, lock_screen, sleep_display.", "parameters": {"type": "object", "properties": {"action": {"type": "string"}, "level": {"type": "integer"}, "enabled": {"type": "boolean"}, "dry_run": {"type": "boolean"}}, "required": ["action"]}}},
+    {"type": "function", "function": {"name": "mac_tool", "description": "Dispatch one of the 487 cataloged Mac tools by id. Prefer explicit tools when available; use this for catalog capabilities and aliases.", "parameters": {"type": "object", "properties": {"id": {"type": "string"}, "args": {"type": "object"}}, "required": ["id"]}}},
     {"type": "function", "function": {"name": "ask_user", "description": "Ask the user for confirmation or clarification.", "parameters": {"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}}},
     {"type": "function", "function": {"name": "done", "description": "Finish the task.", "parameters": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}}},
 ]

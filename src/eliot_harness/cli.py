@@ -16,11 +16,13 @@ from .local_index import LocalIndex, DEFAULT_INDEX_PATH
 from .model import EliotModelClient
 from .permissions import PermissionState, Source
 from .runtime import HarnessRuntime
+from .tool_catalog import MAC_TOOLS, catalog_summary
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task", required=True)
+    ap.add_argument("--task", default=None)
+    ap.add_argument("--list-mac-tools", action="store_true")
     ap.add_argument("--model-url", default="http://localhost:8081")
     ap.add_argument("--model-name", default="default_model")
     ap.add_argument("--transcript", default="results/transcript.json")
@@ -55,6 +57,12 @@ def main() -> None:
     ap.add_argument("--enable-podcasts", action="store_true")
     ap.add_argument("--live-ax", action="store_true", help="observe the live macOS Accessibility tree each turn")
     args = ap.parse_args()
+
+    if args.list_mac_tools:
+        print(catalog_summary(limit=len(MAC_TOOLS)))
+        return
+    if not args.task:
+        raise SystemExit("--task is required unless --list-mac-tools is set")
 
     cfg = load_config(args.config) if args.config else load_config()
     if args.enable_web:

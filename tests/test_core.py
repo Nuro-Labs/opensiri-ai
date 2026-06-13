@@ -62,6 +62,19 @@ def test_system_control_dry_run():
     assert "DRY RUN" in SystemControlConnector().set_volume(25).text
 
 
+def test_mac_tool_catalog_has_487_tools():
+    from eliot_harness.tool_catalog import MAC_TOOLS, TARGET_TOOL_COUNT
+    assert len(MAC_TOOLS) == TARGET_TOOL_COUNT == 487
+    assert any(t.id == "mail.search" and t.implemented for t in MAC_TOOLS)
+
+
+def test_mac_tool_dispatch_catalog_list():
+    from eliot_harness.executor import Executor
+    from eliot_harness.schema import Action
+    out = Executor().execute(Action("mac_tool", {"id": "catalog.list"})).output
+    assert "mail.search" in out
+
+
 def test_model_parse_action_structured():
     client = EliotModelClient()
     msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}

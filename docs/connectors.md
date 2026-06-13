@@ -25,12 +25,24 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 
 ## Model-Callable Tools
 
+The harness exposes a literal catalog of 487 Mac capability entries through
+`mac_tool`. The catalog is inspectable with:
+
+```bash
+eliot-harness --list-mac-tools
+```
+
+Currently implemented catalog entries dispatch to the explicit connector tools
+below. Reserved catalog entries fail closed with a clear “not implemented yet”
+message instead of pretending to work.
+
 - `mail_search`, `mail_draft`, `mail_send`
 - `messages_search`, `message_draft`, `message_send`
 - `file_search`, `local_search`
 - `calendar_free_busy`, `contacts_resolve`, `reminders_list`
 - `browser_open_url`, `browser_history_search`, `browser_open_youtube_liked`, `browser_play_youtube`
 - `system_control`
+- `mac_tool`
 
 ## Planned
 

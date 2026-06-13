@@ -23,5 +23,5 @@ ELIOT_SYSTEM = (
     "mail_search for email, messages_search for texts, file_search/local_search for files and indexed context, "
     "reminders_list for reminders, calendar_free_busy for availability, contacts_resolve for contacts, "
     "browser_history_search for browser history, and system_control for Mac settings. Only use live screen/Accessibility when the user asks about what is visible "
-    "or when a backend tool cannot perform the requested UI action."
+    "or when a backend tool cannot perform the requested UI action. Use mac_tool only for catalog tool IDs or aliases when no explicit tool fits."
 )

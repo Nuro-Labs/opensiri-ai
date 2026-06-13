@@ -21,6 +21,7 @@ from . import mac_ax
 from .local_index import LocalIndex
 from .permissions import PermissionState, Source
 from .schema import Action
+from .tool_catalog import MAC_TOOL_BY_ID, catalog_summary
 
 
 @dataclass
@@ -118,6 +119,8 @@ class Executor:
             return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=False).text)
         if name == "system_control":
             return ExecutionResult(self.system.execute(str(args.get("action", "status")), args).text, terminal=True)
+        if name == "mac_tool":
+            return self._mac_tool(str(args.get("id", "")), args.get("args") if isinstance(args.get("args"), dict) else {})
         if name == "web_search":
             return ExecutionResult(self.web.execute("web_search", args).text if self.web else "web access unavailable")
         if name == "invoke_intent":
@@ -168,6 +171,48 @@ class Executor:
         if not self.reminders.can_read:
             return "reminders access not enabled"
         return "\n".join(r.text for r in self.reminders.read_context("reminders")[:limit]) or "no reminders found"
+
+    def _mac_tool(self, tool_id: str, args: dict) -> ExecutionResult:
+        if tool_id == "catalog.list":
+            return ExecutionResult(catalog_summary(), terminal=True)
+        tool = MAC_TOOL_BY_ID.get(tool_id)
+        if not tool:
+            return ExecutionResult(f"unknown Mac tool: {tool_id}", terminal=True)
+        mapping = {
+            "app.open": lambda: self.execute(Action("open_app", {"name": args.get("name", "")})),
+            "mail.search": lambda: self.execute(Action("mail_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
+            "mail.draft": lambda: self.execute(Action("mail_draft", {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", "")})),
+            "mail.send": lambda: self.execute(Action("mail_send", {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", "")})),
+            "messages.search": lambda: self.execute(Action("messages_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
+            "messages.draft": lambda: self.execute(Action("message_draft", {"recipient": args.get("recipient", ""), "text": args.get("text", "")})),
+            "messages.send": lambda: self.execute(Action("message_send", {"recipient": args.get("recipient", ""), "text": args.get("text", "")})),
+            "files.search": lambda: self.execute(Action("file_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
+            "files.local_search": lambda: self.execute(Action("local_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)})),
+            "memory.search": lambda: self.execute(Action("memory_search", {"query": args.get("query", "")})),
+            "memory.ask": lambda: self.execute(Action("memory_ask", {"query": args.get("query", "")})),
+            "memory.save": lambda: self.execute(Action("memory_save", {"content": args.get("content", ""), "source": args.get("source", "mac_tool")})),
+            "reminders.list": lambda: self.execute(Action("reminders_list", {"limit": args.get("limit", 20)})),
+            "reminders.create": lambda: self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}})),
+            "notes.create": lambda: self.execute(Action("invoke_intent", {"app": "Notes", "intent": "CreateNote", "params": {"title": args.get("title", "Untitled"), "body": args.get("body", "")}})),
+            "calendar.free_busy": lambda: self.execute(Action("calendar_free_busy", {"day": args.get("day"), "time_text": args.get("time_text")})),
+            "calendar.create_event": lambda: self.execute(Action("invoke_intent", {"app": "Calendar", "intent": "CreateEvent", "params": {"title": args.get("title", "Event")}})),
+            "contacts.resolve": lambda: self.execute(Action("contacts_resolve", {"name": args.get("name", ""), "limit": args.get("limit", 5)})),
+            "browser.open_url": lambda: self.execute(Action("browser_open_url", {"url": args.get("url", ""), "browser": args.get("browser", "Google Chrome")})),
+            "browser.history_search": lambda: self.execute(Action("browser_history_search", {"query": args.get("query", ""), "limit": args.get("limit", 10)})),
+            "browser.youtube_liked": lambda: self.execute(Action("browser_open_youtube_liked", {})),
+            "browser.youtube_play_visible": lambda: self.execute(Action("browser_play_youtube", {})),
+            "web.search": lambda: self.execute(Action("web_search", {"query": args.get("query", ""), "max_results": args.get("max_results", 3)})),
+            "system.status": lambda: self.execute(Action("system_control", {"action": "status"})),
+            "system.volume": lambda: self.execute(Action("system_control", {"action": "set_volume", "level": args.get("level", 50)})),
+            "system.brightness": lambda: self.execute(Action("system_control", {"action": "set_brightness", "level": args.get("level", 50)})),
+            "system.dark_mode": lambda: self.execute(Action("system_control", {"action": "dark_mode", "enabled": args.get("enabled")})),
+            "system.dnd": lambda: self.execute(Action("system_control", {"action": "dnd", "enabled": args.get("enabled", True)})),
+            "system.lock": lambda: self.execute(Action("system_control", {"action": "lock_screen"})),
+            "system.sleep_display": lambda: self.execute(Action("system_control", {"action": "sleep_display"})),
+        }
+        if tool_id in mapping:
+            return mapping[tool_id]()
+        return ExecutionResult(f"Mac tool catalog entry exists but is not implemented yet: {tool_id} ({tool.description})", terminal=True)
 
     def _invoke_intent(self, app: str, intent: str, params: dict) -> str:
         osa = None
