@@ -43,8 +43,9 @@ class EliotModelClient:
             "tools": OPENAI_TOOLS,
             "max_tokens": max_tokens,
             "temperature": 0.0,
-            "chat_template_kwargs": {"enable_thinking": self.thinking},
         }
+        if self.thinking:
+            body["chat_template_kwargs"] = {"enable_thinking": True}
         headers = {"Content-Type": "application/json", "User-Agent": "opensiri-ai/0.1"}
         if self.api_key:
             headers[self.auth_header] = self.api_key if self.auth_header.lower() != "authorization" else "Bearer " + self.api_key
