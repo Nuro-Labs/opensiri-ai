@@ -8,6 +8,7 @@ source selection plus local OS permissions.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import time
@@ -86,7 +87,12 @@ def unsupported_source(name: str) -> IndexedItem:
 
 def index_mail(limit: int = 20) -> list[IndexedItem]:
     conn = MailConnector(); conn.can_read = True
-    return [IndexedItem("mail", "Mail message", r.text, "mail://recent", "hyper") for r in conn.recent_messages(limit=limit)]
+    items = []
+    for r in conn.recent_messages(limit=limit):
+        digest = hashlib.sha256(r.text.encode("utf-8")).hexdigest()[:16]
+        title = r.text.split(" | ", 1)[0].replace("Subject: ", "")[:120] or "Mail message"
+        items.append(IndexedItem("mail", title, r.text, f"mail://recent/{digest}", "hyper"))
+    return items
 
 
 def index_messages(limit: int = 50) -> list[IndexedItem]:
