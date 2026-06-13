@@ -18,8 +18,46 @@ class MailConnector(Connector):
     def read_context(self, task: str) -> list[ConnectorResult]:
         if not self.can_read or not any(x in task.lower() for x in ("email", "mail", "inbox")):
             return []
-        out = run_osa('tell application "Mail" to get subject of messages 1 thru 5 of inbox')
-        return [ConnectorResult(f"Recent Mail subjects: {out}", {"source": self.source})]
+        selected = self.selected_messages(limit=5)
+        if selected:
+            return selected
+        return self.recent_messages(limit=5)
+
+    def selected_messages(self, limit: int = 10) -> list[ConnectorResult]:
+        script = '''tell application "Mail"
+set out to {}
+set i to 0
+repeat with m in selection
+  set i to i + 1
+  set end of out to "Subject: " & (subject of m) & " | From: " & (sender of m) & " | Date: " & ((date received of m) as string) & " | Body: " & (content of m)
+  if i >= ''' + str(limit) + ''' then exit repeat
+end repeat
+return out
+end tell'''
+        out = run_osa(script)
+        return self._split_results(out, "selected_mail")
+
+    def recent_messages(self, days: int = 7, limit: int = 20) -> list[ConnectorResult]:
+        script = '''set cutoff to (current date) - (''' + str(days) + ''' * days)
+tell application "Mail"
+set out to {}
+set i to 0
+set matches to messages of inbox whose date received is greater than cutoff
+repeat with m in matches
+  set i to i + 1
+  set end of out to "Subject: " & (subject of m) & " | From: " & (sender of m) & " | Date: " & ((date received of m) as string) & " | Body: " & (content of m)
+  if i >= ''' + str(limit) + ''' then exit repeat
+end repeat
+return out
+end tell'''
+        out = run_osa(script, timeout=45)
+        return self._split_results(out, "recent_mail")
+
+    def _split_results(self, out: str, kind: str) -> list[ConnectorResult]:
+        if not out or out.startswith("error"):
+            return []
+        rows = [x.strip() for x in out.replace(", Subject:", "\nSubject:").splitlines() if x.strip()]
+        return [ConnectorResult(row[:1200], {"source": self.source, "kind": kind}) for row in rows[: self.max_context_items]]
 
     def draft_email(self, to: str, subject: str, body: str, dry_run: bool = True) -> ConnectorResult:
         if dry_run or not self.can_write:

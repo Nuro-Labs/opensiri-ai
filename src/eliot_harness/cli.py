@@ -29,6 +29,9 @@ def main() -> None:
     ap.add_argument("--enable-memory-write", action="store_true")
     ap.add_argument("--enable-web", action="store_true")
     ap.add_argument("--enable-files", action="store_true")
+    ap.add_argument("--enable-mail", action="store_true")
+    ap.add_argument("--enable-messages", action="store_true")
+    ap.add_argument("--enable-photos", action="store_true")
     ap.add_argument("--files-root", action="append", default=[])
     ap.add_argument("--config", default=None)
     ap.add_argument("--enable-visual", action="store_true")
@@ -45,7 +48,14 @@ def main() -> None:
     if args.enable_files:
         cfg.sources["files"].read = True
     if args.enable_visual:
+        cfg.sources["visual"].read = True
+    if args.enable_photos:
         cfg.sources["photos"].read = True
+    if args.enable_mail:
+        cfg.sources["mail"].read = True
+    if args.enable_messages:
+        cfg.sources["messages"].read = True
+        cfg.sources["messages_index"].read = True
     for flag, source in [(args.enable_maps, "maps"), (args.enable_music, "music"), (args.enable_podcasts, "podcasts")]:
         if flag:
             cfg.sources[source].read = True
@@ -63,7 +73,7 @@ def main() -> None:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
         read_sources.add(Source.FILES)
-    for source in ("maps", "music", "podcasts"):
+    for source in ("mail", "messages", "photos", "visual", "maps", "music", "podcasts"):
         if cfg.sources[source].read:
             read_sources.add(Source(source))
     perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=cfg.network_enabled)

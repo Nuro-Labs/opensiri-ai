@@ -1,8 +1,8 @@
 """Opt-in app/source indexer for personal context.
 
-The indexer syncs bounded summaries into Hypersave. It does not run by default
-and never indexes Mail, Messages, or Photos without future explicit connector
-implementations.
+The indexer syncs bounded summaries into Hypersave. It does not run by default,
+and hyper-sensitive sources such as Mail, Messages, and Photos require explicit
+source selection plus local OS permissions.
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 
 from .connectors.files import FilesConnector
+from .connectors.mail import MailConnector
+from .connectors.messages_index import MessagesIndexConnector
+from .connectors.photos import PhotosConnector
 from .hypersave import HypersaveClient
 
 
@@ -76,6 +79,21 @@ def unsupported_source(name: str) -> IndexedItem:
     return IndexedItem(name, f"{name} connector not enabled", f"{name} indexing is not implemented yet. This source is intentionally skipped until explicit permissions and safe extraction are built.", sensitivity="hyper")
 
 
+def index_mail(limit: int = 20) -> list[IndexedItem]:
+    conn = MailConnector(); conn.can_read = True
+    return [IndexedItem("mail", "Mail message", r.text, "mail://recent", "hyper") for r in conn.recent_messages(limit=limit)]
+
+
+def index_messages(limit: int = 50) -> list[IndexedItem]:
+    conn = MessagesIndexConnector(); conn.can_read = True
+    return [IndexedItem("messages", "Message", r.text, "messages://local", "hyper") for r in conn.recent_messages(limit=limit)]
+
+
+def index_photos() -> list[IndexedItem]:
+    conn = PhotosConnector(); conn.can_read = True
+    return [IndexedItem("photos", "Photos metadata", r.text, "photos://metadata", "hyper") for r in conn.read_context("photos albums")]
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--sources", default="files,calendar,reminders,notes,safari")
@@ -101,8 +119,12 @@ def main() -> None:
             items.extend(index_notes())
         elif source == "safari":
             items.extend(index_safari())
-        elif source in ("mail", "messages", "photos"):
-            items.append(unsupported_source(source))
+        elif source == "mail":
+            items.extend(index_mail())
+        elif source == "messages":
+            items.extend(index_messages())
+        elif source == "photos":
+            items.extend(index_photos())
 
     results = []
     for item in items:

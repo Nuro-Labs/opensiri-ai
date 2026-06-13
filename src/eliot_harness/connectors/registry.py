@@ -12,8 +12,10 @@ from .mail import MailConnector
 from .maps import MapsConnector
 from .memory import MemoryConnector
 from .messages import MessagesConnector
+from .messages_index import MessagesIndexConnector
 from .music import MusicConnector
 from .notes import NotesConnector
+from .photos import PhotosConnector
 from .podcasts import PodcastsConnector
 from .reminders import RemindersConnector
 from .safari import SafariConnector
@@ -33,10 +35,12 @@ def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None 
         "mail": MailConnector(),
         "maps": MapsConnector(),
         "messages": MessagesConnector(),
+        "messages_index": MessagesIndexConnector(),
         "music": MusicConnector(),
         "safari": SafariConnector(),
         "podcasts": PodcastsConnector(),
-        "photos": VisualConnector(),
+        "photos": PhotosConnector(),
+        "visual": VisualConnector(),
         "web": WebConnector(enabled=config.network_enabled),
     }
     for name, connector in connectors.items():

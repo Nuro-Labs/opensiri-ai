@@ -97,6 +97,16 @@ def test_maps_music_podcasts_dry_runs():
     assert "podcasts.apple.com" in PodcastsConnector().open_search("Waveform").text
 
 
+def test_sensitive_indexers_fail_safely():
+    from eliot_harness.connectors.messages_index import MessagesIndexConnector
+    from eliot_harness.connectors.photos import PhotosConnector
+    m = MessagesIndexConnector(db_path="/definitely/missing/chat.db")
+    m.can_read = True
+    assert "unavailable" in m.recent_messages()[0].text.lower()
+    p = PhotosConnector()
+    assert p.read_context("photos") == []
+
+
 def test_reference_resolver_latest_draft():
     store = ReferenceStore()
     store.add("draft", "email draft", "hello")

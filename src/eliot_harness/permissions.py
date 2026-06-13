@@ -27,6 +27,7 @@ class Source(str, Enum):
     PODCASTS = "podcasts"
     SAFARI = "safari"
     PHOTOS = "photos"
+    VISUAL = "visual"
     HYPERSAVE = "hypersave"
     WEB = "web"
 

@@ -27,6 +27,8 @@ struct PaletteView: View {
                 Toggle("Files", isOn: $state.enableFiles)
                 Toggle("Web", isOn: $state.enableWeb)
                 Toggle("Visual", isOn: $state.enableVisual)
+                Toggle("Mail", isOn: $state.enableMail)
+                Toggle("Messages", isOn: $state.enableMessages)
                 Toggle("Maps", isOn: $state.enableMaps)
                 Toggle("Music", isOn: $state.enableMusic)
                 Toggle("Live AX", isOn: $state.liveAX)

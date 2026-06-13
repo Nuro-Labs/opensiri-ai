@@ -25,9 +25,24 @@ class VisualConnector(Connector):
             return ConnectorResult(f"screenshot failed: {type(e).__name__}")
         if r.returncode != 0 or not path.exists():
             return ConnectorResult("screenshot cancelled or failed")
-        return ConnectorResult(f"screenshot captured: {path}", {"path": str(path), "source": self.source})
+        text = self.ocr_image(path)
+        if text:
+            return ConnectorResult(f"screenshot captured: {path}\nOCR:\n{text[:2000]}", {"path": str(path), "source": self.source, "ocr": True})
+        return ConnectorResult(f"screenshot captured: {path}", {"path": str(path), "source": self.source, "ocr": False})
+
+    def ocr_image(self, path: str | Path) -> str:
+        helper = Path(__file__).resolve().parents[3] / "scripts" / "ocr_image.swift"
+        if not helper.exists():
+            return ""
+        try:
+            r = subprocess.run(["swift", str(helper), str(path)], capture_output=True, text=True, timeout=60)
+        except Exception:
+            return ""
+        return r.stdout.strip() if r.returncode == 0 else ""
 
     def read_context(self, task: str) -> list[ConnectorResult]:
-        if any(x in task.lower() for x in ("screen", "screenshot", "image", "photo", "looking at", "movie is this")):
-            return [ConnectorResult("Visual connector available but disabled by default. Enable visual capture to inspect screenshots.", {"source": self.source})]
+        if any(x in task.lower() for x in ("screen", "screenshot", "image", "looking at", "movie is this")):
+            if not self.can_read:
+                return [ConnectorResult("Visual connector available but disabled by default. Enable visual capture to inspect screenshots.", {"source": self.source})]
+            return [self.capture_interactive()]
         return []

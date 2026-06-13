@@ -34,10 +34,12 @@ class HarnessConfig:
         "mail": SourceConfig(read=False, write=False),
         "maps": SourceConfig(read=False, write=False),
         "messages": SourceConfig(read=False, write=False),
+        "messages_index": SourceConfig(read=False, write=False),
         "music": SourceConfig(read=False, write=False),
         "podcasts": SourceConfig(read=False, write=False),
         "safari": SourceConfig(read=False, write=False),
         "photos": SourceConfig(read=False, write=False),
+        "visual": SourceConfig(read=False, write=False),
         "web": SourceConfig(read=False, write=False),
     })
 

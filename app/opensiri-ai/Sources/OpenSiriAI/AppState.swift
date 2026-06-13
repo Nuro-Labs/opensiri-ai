@@ -28,6 +28,9 @@ final class AppState: ObservableObject {
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
+    @Published var enableMail: Bool = UserDefaults.standard.bool(forKey: "enableMail")
+    @Published var enableMessages: Bool = UserDefaults.standard.bool(forKey: "enableMessages")
+    @Published var enablePhotos: Bool = UserDefaults.standard.bool(forKey: "enablePhotos")
     @Published var enableMaps: Bool = UserDefaults.standard.bool(forKey: "enableMaps")
     @Published var enableMusic: Bool = UserDefaults.standard.bool(forKey: "enableMusic")
     @Published var enablePodcasts: Bool = UserDefaults.standard.bool(forKey: "enablePodcasts")
@@ -44,6 +47,9 @@ final class AppState: ObservableObject {
         if enableFiles { chips.append("Files") }
         if enableWeb { chips.append("Web") }
         if enableVisual { chips.append("Visual") }
+        if enableMail { chips.append("Mail") }
+        if enableMessages { chips.append("Messages") }
+        if enablePhotos { chips.append("Photos") }
         if enableMaps { chips.append("Maps") }
         if enableMusic { chips.append("Music") }
         if enablePodcasts { chips.append("Podcasts") }
@@ -101,6 +107,9 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
+        UserDefaults.standard.set(enableMail, forKey: "enableMail")
+        UserDefaults.standard.set(enableMessages, forKey: "enableMessages")
+        UserDefaults.standard.set(enablePhotos, forKey: "enablePhotos")
         UserDefaults.standard.set(enableMaps, forKey: "enableMaps")
         UserDefaults.standard.set(enableMusic, forKey: "enableMusic")
         UserDefaults.standard.set(enablePodcasts, forKey: "enablePodcasts")
@@ -114,7 +123,8 @@ final class AppState: ObservableObject {
             "hypersave": ["read": enableMemory || enableMemoryWrite, "write": enableMemoryWrite, "max_sensitivity": "high"],
             "files": ["read": enableFiles, "write": false, "max_sensitivity": "high"],
             "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
-            "photos": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],
+            "photos": ["read": enablePhotos, "write": false, "max_sensitivity": "hyper"],
+            "visual": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],
             "calendar": ["read": false, "write": false, "max_sensitivity": "medium"],
             "contacts": ["read": false, "write": false, "max_sensitivity": "high"],
             "notes": ["read": false, "write": false, "max_sensitivity": "high"],
@@ -122,8 +132,9 @@ final class AppState: ObservableObject {
             "maps": ["read": enableMaps, "write": false, "max_sensitivity": "medium"],
             "music": ["read": enableMusic, "write": false, "max_sensitivity": "medium"],
             "podcasts": ["read": enablePodcasts, "write": false, "max_sensitivity": "medium"],
-            "mail": ["read": false, "write": false, "max_sensitivity": "hyper"],
-            "messages": ["read": false, "write": false, "max_sensitivity": "hyper"],
+            "mail": ["read": enableMail, "write": false, "max_sensitivity": "hyper"],
+            "messages": ["read": enableMessages, "write": false, "max_sensitivity": "hyper"],
+            "messages_index": ["read": enableMessages, "write": false, "max_sensitivity": "hyper"],
             "safari": ["read": false, "write": false, "max_sensitivity": "high"]
         ]
         let data: [String: Any] = [
