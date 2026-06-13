@@ -18,7 +18,7 @@ final class HotKeyManager {
             }
             return noErr
         }, 1, &eventType, nil, nil)
-        var hotKeyID = EventHotKeyID(signature: OSType(0x4F534149), id: 1) // OSAI
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4F534149), id: 1) // OSAI
         RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey), hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
     }
 }
