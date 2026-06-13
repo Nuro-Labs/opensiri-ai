@@ -13,18 +13,26 @@ from pathlib import Path
 class ImageUnderstandingClient:
     """OpenAI-compatible VLM client.
 
-    Configure with `OPENSIRI_VLM_URL` and `OPENSIRI_VLM_MODEL`. The default is
-    intentionally unconfigured so image data stays local unless explicitly wired.
+    Configure with `OPENSIRI_VLM_URL`, `OPENSIRI_VLM_MODEL`, and optional
+    `OPENSIRI_VLM_API_KEY`. The URL may be either a base URL or a full
+    `/chat/completions` Foundry/OpenAI-compatible target URI.
     """
 
-    def __init__(self, base_url: str | None = None, model: str | None = None, timeout: float = 90.0):
+    def __init__(self, base_url: str | None = None, model: str | None = None, api_key: str | None = None, auth_header: str | None = None, timeout: float = 90.0):
         self.base_url = (base_url if base_url is not None else os.environ.get("OPENSIRI_VLM_URL", "")).rstrip("/")
         self.model = model if model is not None else os.environ.get("OPENSIRI_VLM_MODEL", "")
+        self.api_key = api_key if api_key is not None else os.environ.get("OPENSIRI_VLM_API_KEY", "")
+        self.auth_header = auth_header or os.environ.get("OPENSIRI_VLM_AUTH_HEADER") or "api-key"
         self.timeout = timeout
 
     @property
     def configured(self) -> bool:
         return bool(self.base_url and self.model)
+
+    def chat_url(self) -> str:
+        if self.base_url.endswith("/chat/completions"):
+            return self.base_url
+        return self.base_url + "/v1/chat/completions"
 
     def describe(self, image_path: str | Path, prompt: str = "Describe this image for a personal assistant. Mention visible text, people, objects, places, and anything useful for search.") -> str:
         if not self.configured:
@@ -44,12 +52,10 @@ class ImageUnderstandingClient:
             "temperature": 0.1,
             "max_tokens": 500,
         }
-        req = urllib.request.Request(
-            self.base_url + "/v1/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json", "User-Agent": "opensiri-ai/0.1"},
-            method="POST",
-        )
+        headers = {"Content-Type": "application/json", "User-Agent": "opensiri-ai/0.1"}
+        if self.api_key:
+            headers[self.auth_header] = self.api_key if self.auth_header.lower() != "authorization" else "Bearer " + self.api_key
+        req = urllib.request.Request(self.chat_url(), data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 raw = json.loads(resp.read().decode("utf-8"))

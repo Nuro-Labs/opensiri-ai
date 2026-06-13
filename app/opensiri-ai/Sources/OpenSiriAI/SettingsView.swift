@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var state: AppState
     @State private var hypersaveKey: String = ""
+    @State private var visionKey: String = ""
     @State private var keyStatus: String = ""
 
     var body: some View {
@@ -12,6 +13,8 @@ struct SettingsView: View {
                 TextField("Model name", text: $state.modelName)
                 TextField("Vision model URL", text: $state.visionModelURL)
                 TextField("Vision model name", text: $state.visionModelName)
+                SecureField("Vision API key", text: $visionKey)
+                Button("Save Vision Key") { keyStatus = Keychain.save(service: "opensiri-ai", account: "vision-api-key", value: visionKey) ? "Saved" : "Failed" }
                 TextField("Repo root", text: $state.repoRoot)
                 Button("Save Settings") { state.persist() }
             }

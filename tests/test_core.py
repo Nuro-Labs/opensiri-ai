@@ -134,6 +134,18 @@ def test_vision_client_unconfigured(tmp_path):
     assert ImageUnderstandingClient(base_url="", model="").describe(img) == ""
 
 
+def test_vision_full_foundry_url():
+    from eliot_harness.vision import ImageUnderstandingClient
+    url = "https://example.services.ai.azure.com/openai/v1/chat/completions"
+    assert ImageUnderstandingClient(base_url=url, model="grok-4.3").chat_url() == url
+
+
+def test_model_full_foundry_url():
+    from eliot_harness.model import EliotModelClient
+    url = "https://example.services.ai.azure.com/openai/v1/chat/completions"
+    assert EliotModelClient(base_url=url, model="grok-4.3").chat_url() == url
+
+
 def test_reference_resolver_latest_draft():
     store = ReferenceStore()
     store.add("draft", "email draft", "hello")

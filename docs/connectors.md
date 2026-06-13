@@ -38,4 +38,4 @@ Each connector must declare:
 
 The macOS app includes in-app approval cards, transcript access, audit-log access, and recent session history for debugging and continuity.
 
-Eliot is not a native vision model. For image understanding, configure an OpenAI-compatible local VLM with `OPENSIRI_VLM_URL` and `OPENSIRI_VLM_MODEL`, or set the Vision model fields in Settings. Photos/Visual connectors then feed OCR/caption summaries into Eliot.
+Eliot is not a native vision model. For image understanding, configure an OpenAI-compatible VLM with `OPENSIRI_VLM_URL`, `OPENSIRI_VLM_MODEL`, and optionally `OPENSIRI_VLM_API_KEY`, or set the Vision model fields/key in Settings. The URL may be a local base URL or a full Foundry target URI ending in `/chat/completions`. Photos/Visual connectors then feed OCR/caption summaries into Eliot.
