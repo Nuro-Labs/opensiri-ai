@@ -208,10 +208,16 @@ struct ConversationSidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 8) {
-                Circle().fill(.red).frame(width: 12, height: 12)
-                Circle().fill(.yellow).frame(width: 12, height: 12)
-                Circle().fill(.green).frame(width: 12, height: 12)
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous).fill(.black.opacity(0.82))
+                    Image(systemName: "sparkles").font(.system(size: 13, weight: .bold)).foregroundStyle(.white)
+                }
+                .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("OpenSiri").font(.system(size: 15, weight: .semibold))
+                    Text("Mac assistant").font(.caption2).foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button(action: openHistory) { Image(systemName: "line.3.horizontal.decrease") }.buttonStyle(.plain)
                 Button(action: clearConversation) { Image(systemName: "square.and.pencil") }.buttonStyle(.plain)
