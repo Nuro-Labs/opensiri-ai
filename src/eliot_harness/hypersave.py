@@ -29,7 +29,12 @@ class HypersaveClient:
             self.base_url.rstrip("/") + path,
             data=data,
             method=method,
-            headers={"Content-Type": "application/json", "X-API-Key": self.api_key},
+            headers={
+                "Content-Type": "application/json",
+                "X-API-Key": self.api_key,
+                "User-Agent": "opensiri-ai/0.1 (+https://github.com/Nuro-Labs/opensiri-ai)",
+                "Accept": "application/json",
+            },
         )
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
