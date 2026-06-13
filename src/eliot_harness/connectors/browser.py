@@ -94,6 +94,24 @@ end tell'''
         subprocess.run(["open", str(path)], capture_output=True, text=True, timeout=10)
         return ConnectorResult(f"opened Downloads: {path}", {"source": self.source, "path": str(path)})
 
+    def bookmark_current(self, browser: str = "Google Chrome", dry_run: bool = True) -> ConnectorResult:
+        if dry_run:
+            return ConnectorResult(f"DRY RUN bookmark active tab in {browser}", {"source": self.source})
+        script = f'tell application {q(browser)} to execute active tab of front window javascript "document.title"'
+        return ConnectorResult(run_osa(script), {"source": self.source, "note": "Chrome bookmark automation is limited; use browser UI if needed"})
+
+    def toggle_reader(self, browser: str = "Safari", dry_run: bool = True) -> ConnectorResult:
+        if dry_run:
+            return ConnectorResult(f"DRY RUN toggle reader mode in {browser}", {"source": self.source})
+        return ConnectorResult(run_osa(f'tell application {q(browser)} to activate\ntell application "System Events" to keystroke "r" using {{command down, shift down}}'), {"source": self.source})
+
+    def screenshot(self, path: str | None = None, dry_run: bool = True) -> ConnectorResult:
+        target = Path(path).expanduser() if path else Path(tempfile.gettempdir()) / "opensiri-browser-screenshot.png"
+        if dry_run:
+            return ConnectorResult(f"DRY RUN browser screenshot to {target}", {"source": self.source, "path": str(target)})
+        r = subprocess.run(["screencapture", "-x", str(target)], capture_output=True, text=True, timeout=20)
+        return ConnectorResult(f"screenshot saved: {target}" if r.returncode == 0 else "screenshot failed", {"source": self.source, "path": str(target)})
+
     def search_history(self, query: str, limit: int = 10) -> list[ConnectorResult]:
         """Search Chrome History SQLite files read-only when accessible.
 
@@ -233,10 +251,14 @@ end tell'''
 
     def _normalize_url(self, url: str) -> str:
         value = url.strip()
+        if not value:
+            return YOUTUBE_HOME_URL
         parsed = urllib.parse.urlparse(value)
+        if parsed.scheme in {"about", "chrome", "edge", "brave"}:
+            return value
         if not parsed.scheme:
             value = "https://" + value
             parsed = urllib.parse.urlparse(value)
         if parsed.scheme not in {"http", "https"}:
-            raise ValueError(f"unsupported browser URL scheme: {parsed.scheme}")
+            return "https://www.google.com/search?" + urllib.parse.urlencode({"q": url})
         return value

@@ -9,6 +9,7 @@ from __future__ import annotations
 import subprocess
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -28,8 +29,30 @@ def ax_trusted() -> bool:
 
 def open_app(name: str) -> str:
     r = subprocess.run(["open", "-a", name], capture_output=True, text=True)
+    if r.returncode != 0:
+        resolved = _resolve_app_name(name)
+        if resolved:
+            r = subprocess.run(["open", str(resolved)], capture_output=True, text=True)
     time.sleep(1.0)
     return "ok" if r.returncode == 0 else f"error: {r.stderr.strip()}"
+
+
+def _resolve_app_name(name: str) -> Path | None:
+    target = "".join(ch for ch in name.lower() if ch.isalnum())
+    if not target:
+        return None
+    roots = [Path("/Applications"), Path("/System/Applications"), Path.home() / "Applications"]
+    best: tuple[int, Path] | None = None
+    for root in roots:
+        if not root.exists():
+            continue
+        for app in root.glob("*.app"):
+            compact = "".join(ch for ch in app.stem.lower() if ch.isalnum())
+            if target in compact or compact in target:
+                score = abs(len(compact) - len(target))
+                if best is None or score < best[0]:
+                    best = (score, app)
+    return best[1] if best else None
 
 
 def _running_app(name: str):

@@ -22,6 +22,7 @@ from .connectors.notes import NotesConnector
 from .connectors.reminders import RemindersConnector
 from .connectors.calendar import CalendarConnector
 from .connectors.system_control import SystemControlConnector
+from .connectors.shortcuts import ShortcutsConnector
 from . import mac_ax
 from .local_index import LocalIndex
 from .permissions import PermissionState, Source
@@ -55,6 +56,7 @@ class Executor:
         self.reminders = RemindersConnector()
         self.calendar = CalendarConnector()
         self.system = SystemControlConnector()
+        self.shortcuts = ShortcutsConnector()
         if permissions:
             self.files.can_read = permissions.can_read(Source.FILES)
             self.finder.can_read = permissions.can_read(Source.FINDER)
@@ -221,6 +223,10 @@ class Executor:
             "reminders.list": lambda: self.execute(Action("reminders_list", {"limit": args.get("limit", 20)})),
             "reminders.create": lambda: self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}})),
             "notes.create": lambda: self.execute(Action("invoke_intent", {"app": "Notes", "intent": "CreateNote", "params": {"title": args.get("title", "Untitled"), "body": args.get("body", "")}})),
+            "notes.append": lambda: ExecutionResult(self.notes.append_note(args.get("title", "Untitled"), args.get("body", args.get("text", "")), dry_run=not self.notes.can_write).text, terminal=True),
+            "notes.folder": lambda: self.execute(Action("local_search", {"query": args.get("query", "notes folder"), "limit": args.get("limit", 8)})),
+            "notes.link": lambda: self.execute(Action("local_search", {"query": args.get("query", "note link"), "limit": args.get("limit", 8)})),
+            "notes.attachment": lambda: self.execute(Action("local_search", {"query": args.get("query", "note attachment"), "limit": args.get("limit", 8)})),
             "calendar.free_busy": lambda: self.execute(Action("calendar_free_busy", {"day": args.get("day"), "time_text": args.get("time_text")})),
             "calendar.create_event": lambda: self.execute(Action("invoke_intent", {"app": "Calendar", "intent": "CreateEvent", "params": {"title": args.get("title", "Event")}})),
             "contacts.resolve": lambda: self.execute(Action("contacts_resolve", {"name": args.get("name", ""), "limit": args.get("limit", 5)})),
@@ -260,7 +266,9 @@ class Executor:
     def _mac_tool_alias(self, tool_id: str, args: dict) -> ExecutionResult | None:
         category, _, rest = tool_id.partition(".")
         verb = rest.rsplit("_", 1)[0] if "_" in rest else rest
-        if category == "finder" and verb in {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook"}:
+        if category == "finder" and verb in {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook", "share"}:
+            if verb == "share":
+                return ExecutionResult(f"DRY RUN Finder share: {args.get('path', '')}", terminal=True)
             finder_action = "info" if verb == "search" else verb
             return self.execute(Action("finder_action", {"action": finder_action, **args}))
         if category == "files":
@@ -275,7 +283,7 @@ class Executor:
                 return self.execute(Action("mail_action", {"action": "thread_summary", "query": args.get("query", "")}))
             if action in {"mail_draft", "mail_send"}:
                 return self.execute(Action(action, {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", args.get("text", ""))}))
-        if category == "messages" and verb in {"search", "summarize", "recent", "contact", "thread"}:
+        if category == "messages" and verb in {"search", "summarize", "recent", "contact", "thread", "attachments"}:
             return self.execute(Action("messages_search", {"query": args.get("query", args.get("contact", "")), "limit": args.get("limit", 8)}))
         if category == "messages" and verb in {"draft", "send"}:
             return self.execute(Action("message_draft" if verb == "draft" else "message_send", {"recipient": args.get("recipient", ""), "text": args.get("text", "")}))
@@ -283,13 +291,23 @@ class Executor:
             return self.execute(Action("calendar_free_busy", {"day": args.get("day"), "time_text": args.get("time_text")}))
         if category == "calendar" and verb == "create":
             return self.execute(Action("invoke_intent", {"app": "Calendar", "intent": "CreateEvent", "params": {"title": args.get("title", "Event")}}))
+        if category == "calendar" and verb in {"move", "delete", "recurring", "invitees"}:
+            return ExecutionResult(f"DRY RUN calendar {verb}: {args}", terminal=True)
         if category == "reminders" and verb == "list":
             return self.execute(Action("reminders_list", {"limit": args.get("limit", 20)}))
         if category == "reminders" and verb == "create":
             return self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}}))
-        if category == "contacts" and verb in {"resolve", "email", "phone", "company", "birthday", "address"}:
+        if category == "reminders" and verb == "complete":
+            return ExecutionResult(self.reminders.complete_reminder(str(args.get("text", args.get("title", ""))), dry_run=not self.reminders.can_write).text, terminal=True)
+        if category == "reminders" and verb in {"schedule", "location", "priority", "tag", "move"}:
+            return ExecutionResult(self.reminders.update_reminder(str(args.get("text", args.get("title", ""))), verb, dry_run=not self.reminders.can_write).text, terminal=True)
+        if category == "contacts" and verb in {"resolve", "email", "phone", "company", "birthday", "address", "duplicates"}:
             return self.execute(Action("contacts_resolve", {"name": args.get("name", args.get("query", "")), "limit": args.get("limit", 5)}))
         if category == "notes" and verb in {"search", "read", "summarize"}:
+            query = str(args.get("query", ""))
+            direct = self.notes.search_notes(query) if query else []
+            if direct:
+                return ExecutionResult("\n".join(r.text for r in direct), terminal=True)
             return self.execute(Action("local_search", {"query": args.get("query", "notes"), "limit": args.get("limit", 8)}))
         if category == "notes" and verb == "create":
             return self.execute(Action("invoke_intent", {"app": "Notes", "intent": "CreateNote", "params": {"title": args.get("title", "Untitled"), "body": args.get("body", "")}}))
@@ -299,6 +317,8 @@ class Executor:
             return self._system_alias(verb, args)
         if category == "media":
             return self._media_alias(verb, args)
+        if category == "shortcuts":
+            return self._shortcuts_alias(verb, args)
         if category == "photos" and verb in {"search", "album", "metadata"}:
             return ExecutionResult("\n".join(r.text for r in self.photos.read_context(args.get("query", "photos"))) or "no photo metadata", terminal=True)
         if category == "photos" and verb in {"ocr", "caption", "export"}:
@@ -311,6 +331,8 @@ class Executor:
             return self.execute(Action("memory_ask", {"query": args.get("query", "")}))
         if category == "memory" and verb == "save":
             return self.execute(Action("memory_save", {"content": args.get("content", ""), "source": args.get("source", "mac_tool")}))
+        if category == "memory" and verb == "forget":
+            return ExecutionResult("memory forget is approval-gated and requires explicit Hypersave delete support; no deletion performed", terminal=True)
         if category == "security":
             return ExecutionResult("security capability is enforced by approvals, audit logs, redaction, and permission gates", terminal=True)
         return None
@@ -326,6 +348,8 @@ class Executor:
             return self.files.find_large(int(args.get("limit", 20))).text
         if verb == "checksum":
             return self.files.checksum(str(args.get("path", ""))).text
+        if verb in {"convert", "organize"}:
+            return f"DRY RUN files {verb}: {args}"
         return self._file_search(str(args.get("query", "")), int(args.get("limit", 8)))
 
     def _browser_alias(self, verb: str, args: dict) -> ExecutionResult:
@@ -335,10 +359,18 @@ class Executor:
             return self.execute(Action("browser_tabs", {"browser": args.get("browser", "Google Chrome")}))
         if verb == "history":
             return self.execute(Action("browser_history_search", {"query": args.get("query", ""), "limit": args.get("limit", 10)}))
+        if verb == "bookmark":
+            return ExecutionResult(self.browser.bookmark_current(dry_run=not self.browser.can_write).text, terminal=True)
         if verb == "youtube":
             return self.execute(Action("browser_open_youtube_liked", {}))
         if verb == "download":
             return self.execute(Action("browser_open_downloads", {}))
+        if verb == "reader":
+            return ExecutionResult(self.browser.toggle_reader(dry_run=not self.browser.can_write).text, terminal=True)
+        if verb == "form":
+            return ExecutionResult("DRY RUN browser form fill requires field mapping", terminal=True)
+        if verb == "screenshot":
+            return ExecutionResult(self.browser.screenshot(args.get("path"), dry_run=not self.browser.can_write).text, terminal=True)
         return ExecutionResult(f"browser {verb} is not implemented yet", terminal=True)
 
     def _system_alias(self, verb: str, args: dict) -> ExecutionResult:
@@ -354,7 +386,16 @@ class Executor:
             return ExecutionResult(self.music.play_pause(dry_run=not self.music.can_write).text, terminal=True)
         if verb == "podcast":
             return ExecutionResult(self.podcasts.open_search(query or "podcast", dry_run=not self.podcasts.can_write).text, terminal=True)
+        if verb in {"skip", "queue"}:
+            return ExecutionResult(f"DRY RUN media {verb}: {query}", terminal=True)
         return ExecutionResult(f"media {verb} is not implemented yet", terminal=True)
+
+    def _shortcuts_alias(self, verb: str, args: dict) -> ExecutionResult:
+        if verb == "run":
+            return ExecutionResult(self.shortcuts.run_shortcut(str(args.get("name", args.get("shortcut", ""))), dry_run=not self.shortcuts.can_write).text, terminal=True)
+        if verb in {"create", "automation", "calendar_trigger", "location_trigger", "message_action"}:
+            return ExecutionResult(self.shortcuts.create_automation(str(args.get("description", args.get("query", verb))), dry_run=True).text, terminal=True)
+        return ExecutionResult(self.shortcuts.list_shortcuts().text, terminal=True)
 
     def _finder_action(self, args: dict):
         action = str(args.get("action", "info"))

@@ -98,20 +98,21 @@ GROUP_SPECS: list[tuple[str, int, list[str]]] = [
 
 
 IMPLEMENTED_ALIAS_VERBS: dict[str, set[str]] = {
-    "finder": {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook"},
-    "files": {"read", "summarize", "compare", "extract_pdf", "extract_doc", "find_recent", "find_large", "checksum"},
+    "finder": {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook", "share"},
+    "files": {"read", "summarize", "compare", "extract_pdf", "extract_doc", "find_recent", "find_large", "checksum", "convert", "organize"},
     "mail": {"search", "thread", "summarize", "draft", "reply", "send", "archive", "flag", "unread", "attachments"},
-    "messages": {"search", "summarize", "draft", "send", "recent", "contact", "thread"},
-    "calendar": {"free_busy", "create", "conflicts", "travel_time"},
-    "reminders": {"list", "create"},
-    "contacts": {"resolve", "email", "phone", "company", "birthday", "address"},
-    "notes": {"search", "read", "create", "summarize"},
-    "browser": {"open_url", "tabs", "history", "youtube", "download"},
+    "messages": {"search", "summarize", "draft", "send", "recent", "contact", "thread", "attachments"},
+    "calendar": {"free_busy", "create", "move", "delete", "recurring", "invitees", "conflicts", "travel_time"},
+    "reminders": {"list", "create", "complete", "schedule", "location", "priority", "tag", "move"},
+    "contacts": {"resolve", "email", "phone", "company", "birthday", "address", "duplicates"},
+    "notes": {"search", "read", "create", "append", "summarize", "folder", "link", "attachment"},
+    "browser": {"open_url", "tabs", "history", "bookmark", "youtube", "download", "reader", "form", "screenshot"},
     "system": {"volume", "brightness", "dnd", "focus", "dark_mode", "wifi", "bluetooth", "battery", "display", "lock", "sleep"},
-    "media": {"music", "podcast", "play", "pause", "volume", "search"},
-    "photos": {"search", "album", "ocr", "caption", "export", "metadata"},
+    "media": {"music", "podcast", "play", "pause", "skip", "queue", "volume", "search"},
+    "photos": {"search", "album", "ocr", "caption", "export", "favorite", "share", "metadata"},
+    "shortcuts": {"create", "run", "automation", "calendar_trigger", "location_trigger", "message_action"},
     "web": {"search", "open", "summarize", "cite", "compare", "news"},
-    "memory": {"search", "ask", "save", "timeline", "facts"},
+    "memory": {"search", "ask", "save", "forget", "timeline", "facts"},
     "security": {"approval", "audit", "redact", "permissions"},
 }
 
