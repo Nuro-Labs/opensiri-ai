@@ -19,6 +19,7 @@ from .connectors.mail import MailConnector
 from .connectors.messages_index import MessagesIndexConnector
 from .connectors.photos import PhotosConnector
 from .hypersave import HypersaveClient
+from .local_index import LocalIndex, DEFAULT_INDEX_PATH
 
 
 @dataclass
@@ -38,6 +39,10 @@ def run_osa(script: str, timeout: float = 30.0) -> str:
 def sync_item(client: HypersaveClient, item: IndexedItem) -> str:
     payload = f"[{item.source}] {item.title}\nURI: {item.uri}\n{item.content}"
     return str(client.save_and_wait(payload[:20000], source=f"opensiri-index:{item.source}", sensitivity=item.sensitivity))
+
+
+def add_to_local_index(index: LocalIndex, item: IndexedItem) -> str:
+    return index.upsert(item.source, item.title, item.content, item.uri, item.sensitivity)
 
 
 def index_files(roots: list[str], limit: int = 25) -> list[IndexedItem]:
@@ -100,23 +105,11 @@ def index_photos(understand_selection: bool = False) -> list[IndexedItem]:
     return [IndexedItem("photos", "Photos metadata", r.text, "photos://metadata", "hyper") for r in results]
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--sources", default="files,calendar,reminders,notes,safari")
-    ap.add_argument("--files-root", action="append", default=[])
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--photos-understand-selected", action="store_true", help="export selected Photos assets and run OCR/optional VLM before indexing")
-    ap.add_argument("--out", default="results/indexer_report.json")
-    args = ap.parse_args()
-
-    client = HypersaveClient.from_env()
-    if not client and not args.dry_run:
-        raise SystemExit("HYPERSAVE_API_KEY is required unless --dry-run is set")
-
+def collect_items(sources: str, files_root: list[str], photos_understand_selected: bool = False) -> list[IndexedItem]:
     items: list[IndexedItem] = []
-    for source in [s.strip().lower() for s in args.sources.split(",") if s.strip()]:
+    for source in [s.strip().lower() for s in sources.split(",") if s.strip()]:
         if source == "files":
-            roots = args.files_root or [str(Path.home() / "Documents")]
+            roots = files_root or [str(Path.home() / "Documents")]
             items.extend(index_files(roots))
         elif source == "calendar":
             items.extend(index_calendar())
@@ -131,24 +124,57 @@ def main() -> None:
         elif source == "messages":
             items.extend(index_messages())
         elif source == "photos":
-            items.extend(index_photos(args.photos_understand_selected))
+            items.extend(index_photos(photos_understand_selected))
+    return items
 
+
+def run_once(args, client: HypersaveClient | None, index: LocalIndex | None) -> dict:
+    items = collect_items(args.sources, args.files_root, args.photos_understand_selected)
     results = []
     for item in items:
         rec = asdict(item)
         rec["content"] = rec["content"][:500]
+        if index:
+            try:
+                rec["index_id"] = add_to_local_index(index, item)
+            except Exception as e:
+                rec["index_error"] = f"{type(e).__name__}: {e}"
         if not args.dry_run and client:
             try:
                 rec["save_result"] = sync_item(client, item)[:500]
             except Exception as e:
                 rec["error"] = f"{type(e).__name__}: {e}"
         results.append(rec)
+    return {"ts": time.time(), "count": len(items), "dry_run": args.dry_run, "items": results}
 
-    report = {"ts": time.time(), "count": len(items), "dry_run": args.dry_run, "items": results}
-    p = Path(args.out)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(report, indent=2, ensure_ascii=False))
-    print(json.dumps({"count": len(items), "out": str(p), "dry_run": args.dry_run}, indent=2))
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--sources", default="files,calendar,reminders,notes,safari,mail,messages,photos")
+    ap.add_argument("--files-root", action="append", default=[])
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--photos-understand-selected", action="store_true", help="export selected Photos assets and run OCR/optional VLM before indexing")
+    ap.add_argument("--local-index", action="store_true", help="write indexed items to the local SQLite FTS index")
+    ap.add_argument("--index-path", default=str(DEFAULT_INDEX_PATH))
+    ap.add_argument("--live", action="store_true", help="poll and refresh the index continuously")
+    ap.add_argument("--interval", type=float, default=300.0)
+    ap.add_argument("--out", default="results/indexer_report.json")
+    args = ap.parse_args()
+
+    client = HypersaveClient.from_env()
+    if not client and not args.dry_run and not args.local_index:
+        raise SystemExit("HYPERSAVE_API_KEY is required unless --dry-run or --local-index is set")
+    index = LocalIndex(args.index_path) if args.local_index else None
+
+    while True:
+        report = run_once(args, client, index)
+        p = Path(args.out)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(report, indent=2, ensure_ascii=False))
+        print(json.dumps({"count": report["count"], "out": str(p), "dry_run": args.dry_run, "local_index": bool(index)}, indent=2))
+        if not args.live:
+            break
+        time.sleep(args.interval)
 
 
 if __name__ == "__main__":

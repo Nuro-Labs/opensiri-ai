@@ -65,6 +65,7 @@ final class AppState: ObservableObject {
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
     @Published var enableMemoryWrite: Bool = UserDefaults.standard.bool(forKey: "enableMemoryWrite")
+    @Published var enableLocalIndex: Bool = UserDefaults.standard.bool(forKey: "enableLocalIndex")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
@@ -91,6 +92,7 @@ final class AppState: ObservableObject {
         if liveAX { chips.append("Screen") }
         if enableMemory { chips.append("Memory") }
         if enableMemoryWrite { chips.append("Memory Write") }
+        if enableLocalIndex { chips.append("Local Index") }
         if enableFiles { chips.append("Files") }
         if enableWeb { chips.append("Web") }
         if enableVisual { chips.append("Visual") }
@@ -154,6 +156,7 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")
         UserDefaults.standard.set(enableMemory, forKey: "enableMemory")
         UserDefaults.standard.set(enableMemoryWrite, forKey: "enableMemoryWrite")
+        UserDefaults.standard.set(enableLocalIndex, forKey: "enableLocalIndex")
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")

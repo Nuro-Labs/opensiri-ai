@@ -12,6 +12,7 @@ from .connectors.web import WebConnector
 from .context import ContextCompiler
 from .executor import Executor
 from .hypersave import HypersaveClient
+from .local_index import LocalIndex, DEFAULT_INDEX_PATH
 from .model import EliotModelClient
 from .permissions import PermissionState, Source
 from .runtime import HarnessRuntime
@@ -28,6 +29,8 @@ def main() -> None:
     ap.add_argument("--approval-dir", default="results/approvals")
     ap.add_argument("--enable-memory", action="store_true")
     ap.add_argument("--enable-memory-write", action="store_true")
+    ap.add_argument("--enable-local-index", action="store_true")
+    ap.add_argument("--index-path", default=str(DEFAULT_INDEX_PATH))
     ap.add_argument("--enable-web", action="store_true")
     ap.add_argument("--enable-files", action="store_true")
     ap.add_argument("--enable-mail", action="store_true")
@@ -77,6 +80,7 @@ def main() -> None:
         cfg.sources["hypersave"].read = True
         cfg.sources["hypersave"].write = True
     memory_client = HypersaveClient.from_env() if cfg.sources["hypersave"].read else None
+    local_index = LocalIndex(args.index_path) if args.enable_local_index else None
     memory = MemoryConnector(memory_client)
     registry = build_registry(cfg, memory_client, args.files_root or None)
     read_sources = {Source.HYPERSAVE} if memory_client else set()
@@ -96,7 +100,7 @@ def main() -> None:
     approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "app": FileApproval(args.approval_dir), "yes": AutoApprove()}[args.approval]
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
-        context=ContextCompiler(perms, memory_client, registry),
+        context=ContextCompiler(perms, memory_client, registry, local_index),
         executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled), permissions=perms),
         approval=approval,
         audit_path=args.audit_log,

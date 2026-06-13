@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .hypersave import HypersaveClient
+from .local_index import LocalIndex
 from .permissions import PermissionState, Source
 from .connectors.base import ConnectorRegistry
 
@@ -24,21 +25,31 @@ class ContextBundle:
 
 
 class ContextCompiler:
-    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None, registry: ConnectorRegistry | None = None):
+    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None, registry: ConnectorRegistry | None = None, local_index: LocalIndex | None = None):
         self.permissions = permissions
         self.memory = memory
         self.registry = registry
+        self.local_index = local_index
 
     def compile(self, task: str) -> ContextBundle:
         bundle = ContextBundle()
         bundle.permission_lines.extend(self._permission_summary())
         if self.memory and self.permissions.can_read(Source.HYPERSAVE):
             bundle.memory_lines.extend(self._memory_for_task(task))
+        if self.local_index:
+            bundle.memory_lines.extend(self._index_for_task(task))
         if self.registry:
             for item in self.registry.read_context(task):
                 if item.text and "undefined" not in item.text.lower():
                     bundle.memory_lines.append(item.text[:300])
         return bundle
+
+    def _index_for_task(self, task: str) -> list[str]:
+        try:
+            hits = self.local_index.search(task, limit=6)
+        except Exception as e:
+            return [f"local index unavailable: {type(e).__name__}"]
+        return [f"[{h.source}] {h.title} ({h.uri})\n{h.content[:500]}" for h in hits if h.content.strip()]
 
     def _permission_summary(self) -> list[str]:
         return [

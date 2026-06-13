@@ -39,6 +39,14 @@ def test_context_compiler_renders_permissions():
     assert "PERMISSIONS" in ctx
 
 
+def test_local_index_roundtrip(tmp_path):
+    from eliot_harness.local_index import LocalIndex
+    idx = LocalIndex(tmp_path / "idx.sqlite3")
+    idx.upsert("mail", "Google Cloud meeting", "Meeting with Google Cloud Associate tomorrow", "mail://1", "hyper")
+    hits = idx.search("Google Cloud Associate")
+    assert hits and hits[0].source == "mail"
+
+
 def test_model_parse_action_structured():
     client = EliotModelClient()
     msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}

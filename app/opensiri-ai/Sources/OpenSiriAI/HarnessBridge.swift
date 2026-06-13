@@ -27,6 +27,7 @@ enum HarnessBridge {
         args += ["--config", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/opensiri-ai/config.json").path]
         if state.enableMemory || state.enableMemoryWrite { args.append("--enable-memory") }
         if state.enableMemoryWrite { args.append("--enable-memory-write") }
+        if state.enableLocalIndex { args.append("--enable-local-index") }
         if state.enableFiles { args.append("--enable-files") }
         if state.enableWeb { args.append("--enable-web") }
         if state.enableVisual { args.append("--enable-visual") }

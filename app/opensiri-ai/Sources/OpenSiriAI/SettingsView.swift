@@ -30,6 +30,7 @@ struct SettingsView: View {
                     .onChange(of: state.enableMemoryWrite) { _, enabled in
                         if enabled { state.enableMemory = true }
                     }
+                Toggle("Local Background Index", isOn: $state.enableLocalIndex)
                 Toggle("Files / Finder Selection", isOn: $state.enableFiles)
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
                 Toggle("Visual / Screenshot", isOn: $state.enableVisual)
