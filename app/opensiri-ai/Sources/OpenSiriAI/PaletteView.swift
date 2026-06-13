@@ -19,6 +19,7 @@ struct PaletteView: View {
             HStack {
                 Picker("Approval", selection: $state.approvalMode) {
                     Text("Safe deny").tag("deny")
+                    Text("Ask in app").tag("app")
                     Text("Ask in console").tag("console")
                     Text("Auto yes").tag("yes")
                 }.frame(width: 170)
@@ -39,6 +40,7 @@ struct PaletteView: View {
                 Button("Run") { run() }.keyboardShortcut(.return, modifiers: [.command]).disabled(state.task.isEmpty || state.isRunning)
             }
             HStack { ForEach(state.sourceChips, id: \.self) { Chip($0) } }
+            if let request = state.approvalRequest { ApprovalCard(request: request, approve: approveRequest, deny: denyRequest) }
             ConversationView(messages: state.messages)
             if !state.lastTranscript.isEmpty { Text("Transcript: \(state.lastTranscript)").font(.caption).foregroundStyle(.secondary) }
             DisclosureGroup("Technical log", isExpanded: $state.showTechnicalLog) {
@@ -51,6 +53,7 @@ struct PaletteView: View {
         .padding(24)
         .onAppear { focused = true }
         .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focused = true }
+        .task { await pollApprovals() }
     }
 
     func run() {
@@ -61,6 +64,35 @@ struct PaletteView: View {
     }
 
     func stop() { state.process?.terminate(); state.process = nil; state.isRunning = false; state.status = "Stopped" }
+
+    func pollApprovals() async {
+        while !Task.isCancelled {
+            await MainActor.run { loadApprovalRequest() }
+            try? await Task.sleep(for: .milliseconds(350))
+        }
+    }
+
+    func loadApprovalRequest() {
+        guard let dir = state.approvalDir else { return }
+        let url = dir.appendingPathComponent("approval_request.json")
+        guard let data = try? Data(contentsOf: url), let req = try? JSONDecoder().decode(ApprovalRequest.self, from: data) else {
+            if !state.isRunning { state.approvalRequest = nil }
+            return
+        }
+        if state.approvalRequest?.id != req.id { state.approvalRequest = req }
+    }
+
+    func approveRequest() { respondToApproval(approved: true) }
+    func denyRequest() { respondToApproval(approved: false) }
+
+    func respondToApproval(approved: Bool) {
+        guard let req = state.approvalRequest, let dir = state.approvalDir else { return }
+        let payload: [String: Any] = ["id": req.id, "approved": approved, "reason": approved ? "approved in app" : "denied in app"]
+        if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted]) {
+            try? data.write(to: dir.appendingPathComponent("approval_response.json"))
+        }
+        state.approvalRequest = nil
+    }
 
     func openTranscript() {
         guard !state.lastTranscript.isEmpty else { return }
@@ -115,6 +147,28 @@ struct MessageBubble: View {
     }
     var background: Color {
         switch message.role { case .user: Color.accentColor.opacity(0.18); case .assistant: Color.secondary.opacity(0.12); case .system: Color.green.opacity(0.10) }
+    }
+}
+
+struct ApprovalCard: View {
+    let request: ApprovalRequest
+    let approve: () -> Void
+    let deny: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Approval Required").font(.headline)
+            Text(request.action.name).font(.system(.body, design: .monospaced))
+            ForEach(request.action.args.sorted(by: { $0.key < $1.key }), id: \.key) { key, value in
+                Text("\(key): \(value)").font(.caption).foregroundStyle(.secondary).lineLimit(3)
+            }
+            HStack {
+                Button("Deny", role: .cancel, action: deny)
+                Button("Approve", action: approve).buttonStyle(.borderedProminent)
+            }
+        }
+        .padding(14)
+        .background(Color.orange.opacity(0.16))
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 }
 

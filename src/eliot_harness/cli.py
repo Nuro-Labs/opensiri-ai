@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from .approval import AutoApprove, ConsoleApproval, DenyAllApproval
+from .approval import AutoApprove, ConsoleApproval, DenyAllApproval, FileApproval
 from .config import load_config
 from .connectors.memory import MemoryConnector
 from .connectors.registry import build_registry
@@ -24,7 +24,8 @@ def main() -> None:
     ap.add_argument("--model-name", default="default_model")
     ap.add_argument("--transcript", default="results/transcript.json")
     ap.add_argument("--audit-log", default="results/audit.jsonl")
-    ap.add_argument("--approval", choices=["deny", "console", "yes"], default="deny")
+    ap.add_argument("--approval", choices=["deny", "console", "app", "yes"], default="deny")
+    ap.add_argument("--approval-dir", default="results/approvals")
     ap.add_argument("--enable-memory", action="store_true")
     ap.add_argument("--enable-memory-write", action="store_true")
     ap.add_argument("--enable-web", action="store_true")
@@ -77,7 +78,7 @@ def main() -> None:
         if cfg.sources[source].read:
             read_sources.add(Source(source))
     perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=cfg.network_enabled)
-    approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "yes": AutoApprove()}[args.approval]
+    approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "app": FileApproval(args.approval_dir), "yes": AutoApprove()}[args.approval]
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
         context=ContextCompiler(perms, memory_client, registry),

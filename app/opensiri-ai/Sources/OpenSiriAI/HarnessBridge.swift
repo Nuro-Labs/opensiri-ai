@@ -15,11 +15,15 @@ enum HarnessBridge {
         let candidates = [root.appendingPathComponent(".venv/bin/python").path, "/usr/bin/python3"]
         let python = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"
         let transcriptDir = dataRoot.appendingPathComponent("results/app-transcripts")
+        let approvalDir = dataRoot.appendingPathComponent("results/approvals")
         try FileManager.default.createDirectory(at: transcriptDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: approvalDir, withIntermediateDirectories: true)
         let transcript = transcriptDir.appendingPathComponent("latest.json").path
         state.lastTranscript = transcript
+        state.approvalDir = approvalDir
 
         var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", dataRoot.appendingPathComponent("results/app-audit.jsonl").path]
+        args += ["--approval-dir", approvalDir.path]
         args += ["--config", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/opensiri-ai/config.json").path]
         if state.enableMemory || state.enableMemoryWrite { args.append("--enable-memory") }
         if state.enableMemoryWrite { args.append("--enable-memory-write") }

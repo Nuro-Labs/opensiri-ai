@@ -64,6 +64,15 @@ def test_policy_requires_approval_for_delete():
     assert result.decision == PolicyDecision.REQUIRE_APPROVAL
 
 
+def test_file_approval_times_out(tmp_path):
+    from eliot_harness.approval import FileApproval
+    from eliot_harness.guard import classify
+    from eliot_harness.schema import Action
+    action = Action("run_shell", {"cmd": "rm /tmp/x"})
+    decision = FileApproval(tmp_path, timeout_s=0).approve(action, classify(action.__dict__))
+    assert not decision.approved and "timed out" in decision.reason
+
+
 def test_draft_only_detection_and_output():
     assert is_draft_only_task("Draft an email to Alex. Do not send it.")
     draft = draft_from_context("Draft an email asking to accelerate delivery. Do not send it.", "Alex Chen alex@example.test ventilation 240V concise")

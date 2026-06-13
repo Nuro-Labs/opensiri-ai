@@ -8,6 +8,37 @@ struct ChatMessage: Identifiable, Equatable {
     let date = Date()
 }
 
+struct ApprovalRequest: Identifiable, Equatable, Decodable {
+    struct ActionPayload: Equatable, Decodable {
+        let name: String
+        let args: [String: String]
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decode(String.self, forKey: .name)
+            let raw = try container.decodeIfPresent([String: AnyCodable].self, forKey: .args) ?? [:]
+            args = raw.mapValues { $0.description }
+        }
+
+        enum CodingKeys: String, CodingKey { case name, args }
+    }
+    let id: String
+    let action: ActionPayload
+    let verdict: [String: AnyCodable]
+}
+
+struct AnyCodable: Decodable, CustomStringConvertible, Equatable {
+    let description: String
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if let value = try? container.decode(String.self) { description = value }
+        else if let value = try? container.decode(Int.self) { description = String(value) }
+        else if let value = try? container.decode(Double.self) { description = String(value) }
+        else if let value = try? container.decode(Bool.self) { description = String(value) }
+        else { description = "" }
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     @Published var task: String = ""
@@ -37,7 +68,9 @@ final class AppState: ObservableObject {
     @Published var liveAX: Bool = true
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
+    @Published var approvalRequest: ApprovalRequest?
     var process: Process?
+    var approvalDir: URL?
 
     var sourceChips: [String] {
         var chips = ["Guarded", "Audit"]
