@@ -33,6 +33,9 @@ def main() -> None:
     ap.add_argument("--enable-mail", action="store_true")
     ap.add_argument("--enable-messages", action="store_true")
     ap.add_argument("--enable-photos", action="store_true")
+    ap.add_argument("--enable-reminders", action="store_true")
+    ap.add_argument("--enable-notes-write", action="store_true")
+    ap.add_argument("--enable-reminders-write", action="store_true")
     ap.add_argument("--files-root", action="append", default=[])
     ap.add_argument("--config", default=None)
     ap.add_argument("--enable-visual", action="store_true")
@@ -57,6 +60,14 @@ def main() -> None:
     if args.enable_messages:
         cfg.sources["messages"].read = True
         cfg.sources["messages_index"].read = True
+    if args.enable_reminders:
+        cfg.sources["reminders"].read = True
+    if args.enable_notes_write:
+        cfg.sources["notes"].read = True
+        cfg.sources["notes"].write = True
+    if args.enable_reminders_write:
+        cfg.sources["reminders"].read = True
+        cfg.sources["reminders"].write = True
     for flag, source in [(args.enable_maps, "maps"), (args.enable_music, "music"), (args.enable_podcasts, "podcasts")]:
         if flag:
             cfg.sources[source].read = True
@@ -70,6 +81,10 @@ def main() -> None:
     registry = build_registry(cfg, memory_client, args.files_root or None)
     read_sources = {Source.HYPERSAVE} if memory_client else set()
     write_sources = {Source.HYPERSAVE} if memory_client and cfg.sources["hypersave"].write else set()
+    if cfg.sources["notes"].write:
+        write_sources.add(Source.NOTES)
+    if cfg.sources["reminders"].write:
+        write_sources.add(Source.REMINDERS)
     if cfg.network_enabled:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
@@ -82,7 +97,7 @@ def main() -> None:
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
         context=ContextCompiler(perms, memory_client, registry),
-        executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled)),
+        executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled), permissions=perms),
         approval=approval,
         audit_path=args.audit_log,
     )

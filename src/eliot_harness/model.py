@@ -69,5 +69,8 @@ class EliotModelClient:
         content = msg.get("content") or ""
         m = TC_RE.search(content)
         if not m:
+            content = content.strip()
+            if content:
+                return normalize_action({"name": "done", "args": {"summary": content}})
             return None
         return normalize_action({"name": m.group(1), "args": {pm.group(1): pm.group(2) for pm in PARAM_RE.finditer(m.group(2))}})

@@ -66,8 +66,13 @@ class HarnessRuntime:
                 transcript.add(rec)
                 append_audit(self.audit_path, {"event": "unparseable", "record": rec})
                 break
-            last_tool_call_id = f"call_{turn}"
-            messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": last_tool_call_id, "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
+            raw_tool_calls = model_result.raw.get("tool_calls") or []
+            if raw_tool_calls:
+                last_tool_call_id = raw_tool_calls[0].get("id") or f"call_{turn}"
+                messages.append({"role": "assistant", "content": model_result.raw.get("content") or "", "tool_calls": raw_tool_calls})
+            else:
+                last_tool_call_id = f"call_{turn}"
+                messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": last_tool_call_id, "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
             policy = self.policy.evaluate(action, obs)
             verdict = policy.guard
             rec["policy"] = {"decision": policy.decision.value, "reason": policy.reason, "tier": policy.tier.value}

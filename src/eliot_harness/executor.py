@@ -11,6 +11,7 @@ from .connectors.notes import NotesConnector
 from .connectors.reminders import RemindersConnector
 from .connectors.calendar import CalendarConnector
 from . import mac_ax
+from .permissions import PermissionState, Source
 from .schema import Action
 
 
@@ -21,12 +22,16 @@ class ExecutionResult:
 
 
 class Executor:
-    def __init__(self, memory: MemoryConnector | None = None, web: WebConnector | None = None, shell_timeout: float = 30.0):
+    def __init__(self, memory: MemoryConnector | None = None, web: WebConnector | None = None, shell_timeout: float = 30.0, permissions: PermissionState | None = None):
         self.memory = memory
         self.web = web
         self.notes = NotesConnector()
         self.reminders = RemindersConnector()
         self.calendar = CalendarConnector()
+        if permissions:
+            self.notes.can_write = permissions.can_write(Source.NOTES)
+            self.reminders.can_write = permissions.can_write(Source.REMINDERS)
+            self.calendar.can_write = permissions.can_write(Source.CALENDAR)
         self.shell_timeout = shell_timeout
 
     def execute(self, action: Action, snapshot=None) -> ExecutionResult:

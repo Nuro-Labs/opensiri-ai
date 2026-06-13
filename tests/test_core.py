@@ -45,6 +45,12 @@ def test_model_parse_action_structured():
     assert client._parse_action(msg).args["name"] == "Notes"
 
 
+def test_model_repairs_natural_final_answer():
+    client = EliotModelClient()
+    action = client._parse_action({"content": "Yes, a Notes window is visible."})
+    assert action and action.name == "done" and "Notes" in action.args["summary"]
+
+
 def test_memory_connector_handles_missing_client():
     from eliot_harness.connectors.memory import MemoryConnector
     c = MemoryConnector(None)
@@ -86,6 +92,14 @@ def test_app_connectors_dry_run_writes():
     assert "DRY RUN" in NotesConnector().create_note("T", "B").text
     assert "DRY RUN" in RemindersConnector().add_reminder("Water plant").text
     assert "DRY RUN" in CalendarConnector().create_event("Meeting").text
+
+
+def test_executor_applies_note_write_permission():
+    from eliot_harness.executor import Executor
+    from eliot_harness.permissions import PermissionState, Source
+    ex = Executor(permissions=PermissionState(write_sources={Source.NOTES, Source.REMINDERS}))
+    assert ex.notes.can_write
+    assert ex.reminders.can_write
 
 
 def test_native_helper_scripts_exist():
