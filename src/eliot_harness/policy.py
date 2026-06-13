@@ -48,6 +48,12 @@ class PolicyEngine:
         if action.name == "memory_save":
             if not self.permissions.can_write(Source.HYPERSAVE):
                 return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "memory write requires approval", PermissionTier.MUTATE_LOCAL, guard)
+        if action.name in ("mail_send", "message_send"):
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "external send requires explicit approval", PermissionTier.EXTERNAL, guard)
+        if action.name in ("browser_open_url", "browser_open_youtube_liked", "browser_play_youtube"):
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "browser action requires approval", PermissionTier.EXTERNAL, guard)
+        if action.name == "system_control" and str(action.args.get("action", "status")) != "status":
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "system control change requires approval", PermissionTier.MUTATE_LOCAL, guard)
         return PolicyResult(PolicyDecision.ALLOW, "allowed", tier, guard)
 
     @staticmethod

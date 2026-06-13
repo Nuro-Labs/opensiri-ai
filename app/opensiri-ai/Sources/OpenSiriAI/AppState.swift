@@ -70,8 +70,16 @@ final class AppState: ObservableObject {
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
     @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
     @Published var enableMail: Bool = UserDefaults.standard.bool(forKey: "enableMail")
+    @Published var enableMailWrite: Bool = UserDefaults.standard.bool(forKey: "enableMailWrite")
     @Published var enableMessages: Bool = UserDefaults.standard.bool(forKey: "enableMessages")
+    @Published var enableMessagesWrite: Bool = UserDefaults.standard.bool(forKey: "enableMessagesWrite")
     @Published var enablePhotos: Bool = UserDefaults.standard.bool(forKey: "enablePhotos")
+    @Published var enableCalendar: Bool = UserDefaults.standard.bool(forKey: "enableCalendar")
+    @Published var enableContacts: Bool = UserDefaults.standard.bool(forKey: "enableContacts")
+    @Published var enableBrowser: Bool = UserDefaults.standard.bool(forKey: "enableBrowser")
+    @Published var enableBrowserWrite: Bool = UserDefaults.standard.bool(forKey: "enableBrowserWrite")
+    @Published var enableSystem: Bool = UserDefaults.standard.bool(forKey: "enableSystem")
+    @Published var enableSystemWrite: Bool = UserDefaults.standard.bool(forKey: "enableSystemWrite")
     @Published var enableMaps: Bool = UserDefaults.standard.bool(forKey: "enableMaps")
     @Published var enableMusic: Bool = UserDefaults.standard.bool(forKey: "enableMusic")
     @Published var enablePodcasts: Bool = UserDefaults.standard.bool(forKey: "enablePodcasts")
@@ -97,8 +105,14 @@ final class AppState: ObservableObject {
         if enableWeb { chips.append("Web") }
         if enableVisual { chips.append("Visual") }
         if enableMail { chips.append("Mail") }
+        if enableMailWrite { chips.append("Mail Send") }
         if enableMessages { chips.append("Messages") }
+        if enableMessagesWrite { chips.append("Message Send") }
         if enablePhotos { chips.append("Photos") }
+        if enableCalendar { chips.append("Calendar") }
+        if enableContacts { chips.append("Contacts") }
+        if enableBrowser { chips.append("Browser") }
+        if enableSystem { chips.append("System") }
         if !visionModelURL.isEmpty && !visionModelName.isEmpty { chips.append("Vision Model") }
         if enableMaps { chips.append("Maps") }
         if enableMusic { chips.append("Music") }
@@ -161,8 +175,16 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
         UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
         UserDefaults.standard.set(enableMail, forKey: "enableMail")
+        UserDefaults.standard.set(enableMailWrite, forKey: "enableMailWrite")
         UserDefaults.standard.set(enableMessages, forKey: "enableMessages")
+        UserDefaults.standard.set(enableMessagesWrite, forKey: "enableMessagesWrite")
         UserDefaults.standard.set(enablePhotos, forKey: "enablePhotos")
+        UserDefaults.standard.set(enableCalendar, forKey: "enableCalendar")
+        UserDefaults.standard.set(enableContacts, forKey: "enableContacts")
+        UserDefaults.standard.set(enableBrowser, forKey: "enableBrowser")
+        UserDefaults.standard.set(enableBrowserWrite, forKey: "enableBrowserWrite")
+        UserDefaults.standard.set(enableSystem, forKey: "enableSystem")
+        UserDefaults.standard.set(enableSystemWrite, forKey: "enableSystemWrite")
         UserDefaults.standard.set(enableMaps, forKey: "enableMaps")
         UserDefaults.standard.set(enableMusic, forKey: "enableMusic")
         UserDefaults.standard.set(enablePodcasts, forKey: "enablePodcasts")
@@ -178,16 +200,18 @@ final class AppState: ObservableObject {
             "web": ["read": enableWeb, "write": false, "max_sensitivity": "external"],
             "photos": ["read": enablePhotos, "write": false, "max_sensitivity": "hyper"],
             "visual": ["read": enableVisual, "write": false, "max_sensitivity": "hyper"],
-            "calendar": ["read": false, "write": false, "max_sensitivity": "medium"],
-            "contacts": ["read": false, "write": false, "max_sensitivity": "high"],
+            "calendar": ["read": enableCalendar, "write": false, "max_sensitivity": "medium"],
+            "contacts": ["read": enableContacts, "write": false, "max_sensitivity": "high"],
             "notes": ["read": false, "write": false, "max_sensitivity": "high"],
             "reminders": ["read": false, "write": false, "max_sensitivity": "medium"],
             "maps": ["read": enableMaps, "write": false, "max_sensitivity": "medium"],
             "music": ["read": enableMusic, "write": false, "max_sensitivity": "medium"],
             "podcasts": ["read": enablePodcasts, "write": false, "max_sensitivity": "medium"],
-            "mail": ["read": enableMail, "write": false, "max_sensitivity": "hyper"],
-            "messages": ["read": enableMessages, "write": false, "max_sensitivity": "hyper"],
-            "messages_index": ["read": enableMessages, "write": false, "max_sensitivity": "hyper"],
+            "mail": ["read": enableMail || enableMailWrite, "write": enableMailWrite, "max_sensitivity": "hyper"],
+            "messages": ["read": enableMessages || enableMessagesWrite, "write": enableMessagesWrite, "max_sensitivity": "hyper"],
+            "messages_index": ["read": enableMessages || enableMessagesWrite, "write": false, "max_sensitivity": "hyper"],
+            "browser": ["read": enableBrowser || enableBrowserWrite, "write": enableBrowserWrite, "max_sensitivity": "high"],
+            "system": ["read": enableSystem || enableSystemWrite, "write": enableSystemWrite, "max_sensitivity": "medium"],
             "safari": ["read": false, "write": false, "max_sensitivity": "high"]
         ]
         let data: [String: Any] = [

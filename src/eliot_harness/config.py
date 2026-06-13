@@ -41,6 +41,8 @@ class HarnessConfig:
         "photos": SourceConfig(read=False, write=False),
         "visual": SourceConfig(read=False, write=False),
         "web": SourceConfig(read=False, write=False),
+        "browser": SourceConfig(read=False, write=False),
+        "system": SourceConfig(read=False, write=False),
     })
 
 

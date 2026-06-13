@@ -13,6 +13,8 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `ContactsConnector`: scoped name lookup, no broad contact dump.
 - `MailConnector`: opt-in selected/recent message extraction; drafts by default; sending is approval-only.
 - `MessagesConnector`: drafts by default; sending is approval-only.
+- `BrowserConnector`: Chrome tab/history search plus approval-gated URL/YouTube handoff.
+- `SystemControlConnector`: volume, dark mode, DND, lock/sleep/display scaffolds with approval-gated mutations.
 - `SafariConnector`: reads tab names when enabled.
 - `MessagesIndexConnector`: opt-in local `chat.db` read-only recent message extraction; requires Full Disk Access.
 - `PhotosConnector`: opt-in Photos metadata, selected-photo export, OCR, and optional local VLM captions.
@@ -20,6 +22,15 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `MapsConnector`: Apple Maps URL handoff for directions/search.
 - `MusicConnector`: Music app play/search dry-run and AppleScript handoff.
 - `PodcastsConnector`: Apple Podcasts search URL handoff.
+
+## Model-Callable Tools
+
+- `mail_search`, `mail_draft`, `mail_send`
+- `messages_search`, `message_draft`, `message_send`
+- `file_search`, `local_search`
+- `calendar_free_busy`, `contacts_resolve`, `reminders_list`
+- `browser_open_url`, `browser_history_search`, `browser_open_youtube_liked`, `browser_play_youtube`
+- `system_control`
 
 ## Planned
 

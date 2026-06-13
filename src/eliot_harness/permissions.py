@@ -30,6 +30,8 @@ class Source(str, Enum):
     VISUAL = "visual"
     HYPERSAVE = "hypersave"
     WEB = "web"
+    BROWSER = "browser"
+    SYSTEM = "system"
 
 
 @dataclass

@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..config import HarnessConfig
 from ..hypersave import HypersaveClient
 from .base import ConnectorRegistry
+from .browser import BrowserConnector
 from .calendar import CalendarConnector
 from .contacts import ContactsConnector
 from .files import FilesConnector
@@ -21,6 +22,7 @@ from .reminders import RemindersConnector
 from .safari import SafariConnector
 from .visual import VisualConnector
 from .web import WebConnector
+from .system_control import SystemControlConnector
 
 
 def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None = None, file_roots: list[str] | None = None) -> ConnectorRegistry:
@@ -29,6 +31,7 @@ def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None 
         "hypersave": MemoryConnector(memory_client),
         "files": FilesConnector(file_roots),
         "calendar": CalendarConnector(),
+        "browser": BrowserConnector(),
         "contacts": ContactsConnector(),
         "notes": NotesConnector(),
         "reminders": RemindersConnector(),
@@ -42,6 +45,7 @@ def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None 
         "photos": PhotosConnector(),
         "visual": VisualConnector(),
         "web": WebConnector(enabled=config.network_enabled),
+        "system": SystemControlConnector(),
     }
     for name, connector in connectors.items():
         cfg = config.sources.get(name)

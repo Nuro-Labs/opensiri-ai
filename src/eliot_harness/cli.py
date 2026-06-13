@@ -34,9 +34,17 @@ def main() -> None:
     ap.add_argument("--enable-web", action="store_true")
     ap.add_argument("--enable-files", action="store_true")
     ap.add_argument("--enable-mail", action="store_true")
+    ap.add_argument("--enable-mail-write", action="store_true")
     ap.add_argument("--enable-messages", action="store_true")
+    ap.add_argument("--enable-messages-write", action="store_true")
     ap.add_argument("--enable-photos", action="store_true")
     ap.add_argument("--enable-reminders", action="store_true")
+    ap.add_argument("--enable-calendar", action="store_true")
+    ap.add_argument("--enable-contacts", action="store_true")
+    ap.add_argument("--enable-browser", action="store_true")
+    ap.add_argument("--enable-browser-write", action="store_true")
+    ap.add_argument("--enable-system", action="store_true")
+    ap.add_argument("--enable-system-write", action="store_true")
     ap.add_argument("--enable-notes-write", action="store_true")
     ap.add_argument("--enable-reminders-write", action="store_true")
     ap.add_argument("--files-root", action="append", default=[])
@@ -60,11 +68,32 @@ def main() -> None:
         cfg.sources["photos"].read = True
     if args.enable_mail:
         cfg.sources["mail"].read = True
+    if args.enable_mail_write:
+        cfg.sources["mail"].read = True
+        cfg.sources["mail"].write = True
     if args.enable_messages:
         cfg.sources["messages"].read = True
         cfg.sources["messages_index"].read = True
+    if args.enable_messages_write:
+        cfg.sources["messages"].read = True
+        cfg.sources["messages"].write = True
+        cfg.sources["messages_index"].read = True
     if args.enable_reminders:
         cfg.sources["reminders"].read = True
+    if args.enable_calendar:
+        cfg.sources["calendar"].read = True
+    if args.enable_contacts:
+        cfg.sources["contacts"].read = True
+    if args.enable_browser:
+        cfg.sources["browser"].read = True
+    if args.enable_browser_write:
+        cfg.sources["browser"].read = True
+        cfg.sources["browser"].write = True
+    if args.enable_system:
+        cfg.sources["system"].read = True
+    if args.enable_system_write:
+        cfg.sources["system"].read = True
+        cfg.sources["system"].write = True
     if args.enable_notes_write:
         cfg.sources["notes"].read = True
         cfg.sources["notes"].write = True
@@ -89,11 +118,14 @@ def main() -> None:
         write_sources.add(Source.NOTES)
     if cfg.sources["reminders"].write:
         write_sources.add(Source.REMINDERS)
+    for source in ("mail", "messages", "browser", "system"):
+        if cfg.sources[source].write:
+            write_sources.add(Source(source))
     if cfg.network_enabled:
         read_sources.add(Source.WEB)
     if cfg.sources["files"].read:
         read_sources.add(Source.FILES)
-    for source in ("mail", "messages", "reminders", "photos", "visual", "maps", "music", "podcasts"):
+    for source in ("mail", "messages", "reminders", "calendar", "contacts", "browser", "system", "photos", "visual", "maps", "music", "podcasts"):
         if cfg.sources[source].read:
             read_sources.add(Source(source))
     perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=cfg.network_enabled)

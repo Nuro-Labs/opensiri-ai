@@ -11,6 +11,7 @@ from .connectors.contacts import ContactsConnector
 from .connectors.mail import MailConnector
 from .connectors.memory import MemoryConnector
 from .connectors.messages_index import MessagesIndexConnector
+from .connectors.messages import MessagesConnector
 from .connectors.web import WebConnector
 from .connectors.notes import NotesConnector
 from .connectors.reminders import RemindersConnector
@@ -38,6 +39,7 @@ class Executor:
         self.contacts = ContactsConnector()
         self.mail = MailConnector()
         self.messages_index = MessagesIndexConnector()
+        self.messages = MessagesConnector()
         self.notes = NotesConnector()
         self.reminders = RemindersConnector()
         self.calendar = CalendarConnector()
@@ -45,7 +47,12 @@ class Executor:
         if permissions:
             self.files.can_read = permissions.can_read(Source.FILES)
             self.mail.can_read = permissions.can_read(Source.MAIL)
+            self.mail.can_write = permissions.can_write(Source.MAIL)
             self.messages_index.can_read = permissions.can_read(Source.MESSAGES)
+            self.messages.can_write = permissions.can_write(Source.MESSAGES)
+            self.browser.can_read = permissions.can_read(Source.BROWSER)
+            self.browser.can_write = permissions.can_write(Source.BROWSER)
+            self.system.can_write = permissions.can_write(Source.SYSTEM)
             self.notes.can_write = permissions.can_write(Source.NOTES)
             self.reminders.can_write = permissions.can_write(Source.REMINDERS)
             self.calendar.can_write = permissions.can_write(Source.CALENDAR)
@@ -77,8 +84,16 @@ class Executor:
             return ExecutionResult(self._local_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
         if name == "mail_search":
             return ExecutionResult(self._mail_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
+        if name == "mail_draft":
+            return ExecutionResult(self.mail.draft_email(str(args.get("to", "")), str(args.get("subject", "")), str(args.get("body", "")), dry_run=True).text, terminal=True)
+        if name == "mail_send":
+            return ExecutionResult(self.mail.draft_email(str(args.get("to", "")), str(args.get("subject", "")), str(args.get("body", "")), dry_run=not self.mail.can_write).text, terminal=True)
         if name == "messages_search":
             return ExecutionResult(self._messages_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
+        if name == "message_draft":
+            return ExecutionResult(self.messages.draft_message(str(args.get("recipient", "")), str(args.get("text", ""))).text, terminal=True)
+        if name == "message_send":
+            return ExecutionResult(self.messages.send_message(str(args.get("recipient", "")), str(args.get("text", ""))).text, terminal=True)
         if name == "file_search":
             return ExecutionResult(self._file_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
         if name == "reminders_list":
@@ -88,12 +103,18 @@ class Executor:
         if name == "contacts_resolve":
             return ExecutionResult("\n".join(r.text for r in self.contacts.resolve_contact(str(args.get("name", "")), int(args.get("limit", 5)))), terminal=True)
         if name == "browser_open_url":
+            if not self.browser.can_write:
+                return ExecutionResult(self.browser.open_url(str(args.get("url", "")), str(args.get("browser", "Google Chrome")), dry_run=True).text, terminal=True)
             return ExecutionResult(self.browser.open_url(str(args.get("url", "")), str(args.get("browser", "Google Chrome")), dry_run=False).text)
         if name == "browser_history_search":
             return ExecutionResult("\n".join(r.text for r in self.browser.search_history(str(args.get("query", "")), int(args.get("limit", 10)))) or "no browser history results", terminal=True)
         if name == "browser_open_youtube_liked":
+            if not self.browser.can_write:
+                return ExecutionResult(self.browser.open_youtube_liked(dry_run=True).text, terminal=True)
             return ExecutionResult(self.browser.open_youtube_liked(dry_run=False).text)
         if name == "browser_play_youtube":
+            if not self.browser.can_write:
+                return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=True).text, terminal=True)
             return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=False).text)
         if name == "system_control":
             return ExecutionResult(self.system.execute(str(args.get("action", "status")), args).text, terminal=True)

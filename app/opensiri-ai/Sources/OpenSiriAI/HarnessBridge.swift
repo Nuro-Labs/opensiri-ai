@@ -32,8 +32,16 @@ enum HarnessBridge {
         if state.enableWeb { args.append("--enable-web") }
         if state.enableVisual { args.append("--enable-visual") }
         if state.enableMail { args.append("--enable-mail") }
+        if state.enableMailWrite { args.append("--enable-mail-write") }
         if state.enableMessages { args.append("--enable-messages") }
+        if state.enableMessagesWrite { args.append("--enable-messages-write") }
         if state.enablePhotos { args.append("--enable-photos") }
+        if state.enableCalendar { args.append("--enable-calendar") }
+        if state.enableContacts { args.append("--enable-contacts") }
+        if state.enableBrowser { args.append("--enable-browser") }
+        if state.enableBrowserWrite { args.append("--enable-browser-write") }
+        if state.enableSystem { args.append("--enable-system") }
+        if state.enableSystemWrite { args.append("--enable-system-write") }
         if state.enableMaps { args.append("--enable-maps") }
         if state.enableMusic { args.append("--enable-music") }
         if state.enablePodcasts { args.append("--enable-podcasts") }
