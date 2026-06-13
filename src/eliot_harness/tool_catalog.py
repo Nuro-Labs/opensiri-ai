@@ -97,6 +97,25 @@ GROUP_SPECS: list[tuple[str, int, list[str]]] = [
 ]
 
 
+IMPLEMENTED_ALIAS_VERBS: dict[str, set[str]] = {
+    "finder": {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook"},
+    "files": {"read", "summarize", "compare", "extract_pdf", "extract_doc", "find_recent", "find_large", "checksum"},
+    "mail": {"search", "thread", "summarize", "draft", "reply", "send", "archive", "flag", "unread", "attachments"},
+    "messages": {"search", "summarize", "draft", "send", "recent", "contact", "thread"},
+    "calendar": {"free_busy", "create", "conflicts", "travel_time"},
+    "reminders": {"list", "create"},
+    "contacts": {"resolve", "email", "phone", "company", "birthday", "address"},
+    "notes": {"search", "read", "create", "summarize"},
+    "browser": {"open_url", "tabs", "history", "youtube", "download"},
+    "system": {"volume", "brightness", "dnd", "focus", "dark_mode", "wifi", "bluetooth", "battery", "display", "lock", "sleep"},
+    "media": {"music", "podcast", "play", "pause", "volume", "search"},
+    "photos": {"search", "album", "ocr", "caption", "export", "metadata"},
+    "web": {"search", "open", "summarize", "cite", "compare", "news"},
+    "memory": {"search", "ask", "save", "timeline", "facts"},
+    "security": {"approval", "audit", "redact", "permissions"},
+}
+
+
 def build_catalog() -> list[MacTool]:
     tools: list[MacTool] = list(IMPLEMENTED_TOOLS)
     existing = {t.id for t in tools}
@@ -109,7 +128,7 @@ def build_catalog() -> list[MacTool]:
             if tool_id in existing:
                 continue
             existing.add(tool_id)
-            tools.append(MacTool(tool_id, category, f"{category} capability: {verb.replace('_', ' ')}"))
+            tools.append(MacTool(tool_id, category, f"{category} capability: {verb.replace('_', ' ')}", verb in IMPLEMENTED_ALIAS_VERBS.get(category, set())))
     i = 1
     while len(tools) < TARGET_TOOL_COUNT:
         tool_id = f"mac.extra_{i:03d}"

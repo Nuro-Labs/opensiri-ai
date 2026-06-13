@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import subprocess
 from pathlib import Path
 
@@ -75,6 +76,32 @@ end tell'''
             if self.is_allowed(str(p)) and p.is_file():
                 chunks.append(f"### {p.name}\n{self.extract_text(p, max_chars=max_chars_each)}")
         return ConnectorResult("\n\n".join(chunks) if chunks else "error: no readable files", {"count": len(chunks)})
+
+    def find_recent(self, limit: int = 20) -> ConnectorResult:
+        files = []
+        for root in self.roots:
+            if root.exists():
+                files.extend([p for p in root.rglob("*") if p.is_file()][:1000])
+        files = sorted(files, key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)[:limit]
+        return ConnectorResult("\n".join(str(p) for p in files) or "no recent files", {"source": self.source})
+
+    def find_large(self, limit: int = 20) -> ConnectorResult:
+        files = []
+        for root in self.roots:
+            if root.exists():
+                files.extend([p for p in root.rglob("*") if p.is_file()][:1000])
+        files = sorted(files, key=lambda p: p.stat().st_size if p.exists() else 0, reverse=True)[:limit]
+        return ConnectorResult("\n".join(f"{p.stat().st_size}\t{p}" for p in files) or "no large files", {"source": self.source})
+
+    def checksum(self, path: str) -> ConnectorResult:
+        p = Path(path).expanduser().resolve()
+        if not self.is_allowed(str(p)) or not p.is_file():
+            return ConnectorResult("error: file not allowed or not found", {"path": str(p)})
+        h = hashlib.sha256()
+        with p.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return ConnectorResult(f"sha256 {p}: {h.hexdigest()}", {"source": self.source, "path": str(p)})
 
     def extract_text(self, path: Path, max_chars: int = 12000) -> str:
         if path.is_dir() or not path.exists():

@@ -13,6 +13,10 @@ from .connectors.mail import MailConnector
 from .connectors.memory import MemoryConnector
 from .connectors.messages_index import MessagesIndexConnector
 from .connectors.messages import MessagesConnector
+from .connectors.maps import MapsConnector
+from .connectors.music import MusicConnector
+from .connectors.podcasts import PodcastsConnector
+from .connectors.photos import PhotosConnector
 from .connectors.web import WebConnector
 from .connectors.notes import NotesConnector
 from .connectors.reminders import RemindersConnector
@@ -43,6 +47,10 @@ class Executor:
         self.mail = MailConnector()
         self.messages_index = MessagesIndexConnector()
         self.messages = MessagesConnector()
+        self.maps = MapsConnector()
+        self.music = MusicConnector()
+        self.podcasts = PodcastsConnector()
+        self.photos = PhotosConnector()
         self.notes = NotesConnector()
         self.reminders = RemindersConnector()
         self.calendar = CalendarConnector()
@@ -244,7 +252,109 @@ class Executor:
         }
         if tool_id in mapping:
             return mapping[tool_id]()
+        alias = self._mac_tool_alias(tool_id, args)
+        if alias:
+            return alias
         return ExecutionResult(f"Mac tool catalog entry exists but is not implemented yet: {tool_id} ({tool.description})", terminal=True)
+
+    def _mac_tool_alias(self, tool_id: str, args: dict) -> ExecutionResult | None:
+        category, _, rest = tool_id.partition(".")
+        verb = rest.rsplit("_", 1)[0] if "_" in rest else rest
+        if category == "finder" and verb in {"search", "open", "reveal", "copy", "move", "rename", "tag", "compress", "trash", "info", "quicklook"}:
+            finder_action = "info" if verb == "search" else verb
+            return self.execute(Action("finder_action", {"action": finder_action, **args}))
+        if category == "files":
+            return ExecutionResult(self._files_alias(verb, args), terminal=True)
+        if category == "mail":
+            action = {"search": "mail_search", "thread": "mail_action", "summarize": "mail_action", "draft": "mail_draft", "reply": "mail_draft", "send": "mail_send"}.get(verb)
+            if verb in {"archive", "flag", "unread", "attachments"}:
+                return self.execute(Action("mail_action", {"action": {"archive": "archive_selected", "flag": "flag_selected", "unread": "unread_selected", "attachments": "attachments"}[verb], **args}))
+            if action == "mail_search":
+                return self.execute(Action("mail_search", {"query": args.get("query", ""), "limit": args.get("limit", 8)}))
+            if action == "mail_action":
+                return self.execute(Action("mail_action", {"action": "thread_summary", "query": args.get("query", "")}))
+            if action in {"mail_draft", "mail_send"}:
+                return self.execute(Action(action, {"to": args.get("to", ""), "subject": args.get("subject", ""), "body": args.get("body", args.get("text", ""))}))
+        if category == "messages" and verb in {"search", "summarize", "recent", "contact", "thread"}:
+            return self.execute(Action("messages_search", {"query": args.get("query", args.get("contact", "")), "limit": args.get("limit", 8)}))
+        if category == "messages" and verb in {"draft", "send"}:
+            return self.execute(Action("message_draft" if verb == "draft" else "message_send", {"recipient": args.get("recipient", ""), "text": args.get("text", "")}))
+        if category == "calendar" and verb in {"free_busy", "conflicts", "travel_time"}:
+            return self.execute(Action("calendar_free_busy", {"day": args.get("day"), "time_text": args.get("time_text")}))
+        if category == "calendar" and verb == "create":
+            return self.execute(Action("invoke_intent", {"app": "Calendar", "intent": "CreateEvent", "params": {"title": args.get("title", "Event")}}))
+        if category == "reminders" and verb == "list":
+            return self.execute(Action("reminders_list", {"limit": args.get("limit", 20)}))
+        if category == "reminders" and verb == "create":
+            return self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}}))
+        if category == "contacts" and verb in {"resolve", "email", "phone", "company", "birthday", "address"}:
+            return self.execute(Action("contacts_resolve", {"name": args.get("name", args.get("query", "")), "limit": args.get("limit", 5)}))
+        if category == "notes" and verb in {"search", "read", "summarize"}:
+            return self.execute(Action("local_search", {"query": args.get("query", "notes"), "limit": args.get("limit", 8)}))
+        if category == "notes" and verb == "create":
+            return self.execute(Action("invoke_intent", {"app": "Notes", "intent": "CreateNote", "params": {"title": args.get("title", "Untitled"), "body": args.get("body", "")}}))
+        if category == "browser":
+            return self._browser_alias(verb, args)
+        if category == "system":
+            return self._system_alias(verb, args)
+        if category == "media":
+            return self._media_alias(verb, args)
+        if category == "photos" and verb in {"search", "album", "metadata"}:
+            return ExecutionResult("\n".join(r.text for r in self.photos.read_context(args.get("query", "photos"))) or "no photo metadata", terminal=True)
+        if category == "photos" and verb in {"ocr", "caption", "export"}:
+            return ExecutionResult("\n".join(r.text for r in self.photos.understand_selection(args.get("prompt", "Describe selected photos"))) or "no selected photos understood", terminal=True)
+        if category == "web" and verb in {"search", "open", "summarize", "cite", "compare", "news"}:
+            return self.execute(Action("web_search", {"query": args.get("query", ""), "max_results": args.get("max_results", 3)}))
+        if category == "memory" and verb in {"search", "timeline", "facts"}:
+            return self.execute(Action("memory_search", {"query": args.get("query", "")}))
+        if category == "memory" and verb == "ask":
+            return self.execute(Action("memory_ask", {"query": args.get("query", "")}))
+        if category == "memory" and verb == "save":
+            return self.execute(Action("memory_save", {"content": args.get("content", ""), "source": args.get("source", "mac_tool")}))
+        if category == "security":
+            return ExecutionResult("security capability is enforced by approvals, audit logs, redaction, and permission gates", terminal=True)
+        return None
+
+    def _files_alias(self, verb: str, args: dict) -> str:
+        if verb in {"read", "summarize", "extract_pdf", "extract_doc"}:
+            return self.files.read_file(str(args.get("path", ""))).text
+        if verb == "compare":
+            return self.files.compare_files(args.get("paths", []) if isinstance(args.get("paths"), list) else [str(args.get("path", "")), str(args.get("other", ""))]).text
+        if verb == "find_recent":
+            return self.files.find_recent(int(args.get("limit", 20))).text
+        if verb == "find_large":
+            return self.files.find_large(int(args.get("limit", 20))).text
+        if verb == "checksum":
+            return self.files.checksum(str(args.get("path", ""))).text
+        return self._file_search(str(args.get("query", "")), int(args.get("limit", 8)))
+
+    def _browser_alias(self, verb: str, args: dict) -> ExecutionResult:
+        if verb == "open_url":
+            return self.execute(Action("browser_open_url", {"url": args.get("url", ""), "browser": args.get("browser", "Google Chrome")}))
+        if verb == "tabs":
+            return self.execute(Action("browser_tabs", {"browser": args.get("browser", "Google Chrome")}))
+        if verb == "history":
+            return self.execute(Action("browser_history_search", {"query": args.get("query", ""), "limit": args.get("limit", 10)}))
+        if verb == "youtube":
+            return self.execute(Action("browser_open_youtube_liked", {}))
+        if verb == "download":
+            return self.execute(Action("browser_open_downloads", {}))
+        return ExecutionResult(f"browser {verb} is not implemented yet", terminal=True)
+
+    def _system_alias(self, verb: str, args: dict) -> ExecutionResult:
+        action = {"volume": "set_volume", "brightness": "set_brightness", "dnd": "dnd", "focus": "dnd", "dark_mode": "dark_mode", "wifi": "wifi", "bluetooth": "bluetooth", "battery": "battery", "display": "status", "lock": "lock_screen", "sleep": "sleep_display"}.get(verb, "status")
+        payload = {"action": action, **args}
+        return self.execute(Action("system_control", payload))
+
+    def _media_alias(self, verb: str, args: dict) -> ExecutionResult:
+        query = str(args.get("query", args.get("text", "")))
+        if verb in {"music", "play", "search"}:
+            return ExecutionResult(self.music.play_query(query or "music", dry_run=not self.music.can_write).text, terminal=True)
+        if verb in {"pause", "volume"}:
+            return ExecutionResult(self.music.play_pause(dry_run=not self.music.can_write).text, terminal=True)
+        if verb == "podcast":
+            return ExecutionResult(self.podcasts.open_search(query or "podcast", dry_run=not self.podcasts.can_write).text, terminal=True)
+        return ExecutionResult(f"media {verb} is not implemented yet", terminal=True)
 
     def _finder_action(self, args: dict):
         action = str(args.get("action", "info"))

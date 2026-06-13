@@ -80,6 +80,7 @@ def test_mac_tool_catalog_has_487_tools():
     from eliot_harness.tool_catalog import MAC_TOOLS, TARGET_TOOL_COUNT
     assert len(MAC_TOOLS) == TARGET_TOOL_COUNT == 487
     assert any(t.id == "mail.search" and t.implemented for t in MAC_TOOLS)
+    assert sum(t.implemented for t in MAC_TOOLS) >= 365
 
 
 def test_mac_tool_dispatch_catalog_list():
