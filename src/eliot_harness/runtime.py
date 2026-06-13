@@ -17,6 +17,7 @@ from .prompt import ELIOT_SYSTEM
 from .schema import make_observation
 from .transcript import Transcript
 from . import mac_ax
+from .writing import draft_from_context, is_draft_only_task
 
 
 class HarnessRuntime:
@@ -30,6 +31,15 @@ class HarnessRuntime:
 
     def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None, live_ax: bool = False) -> Transcript:
         transcript = Transcript(task=task)
+        pre_context = self.context.compile(task).render()
+        if is_draft_only_task(task):
+            result = draft_from_context(task, pre_context)
+            rec = {"turn": 0, "obs": "draft-only harness skill", "action": {"name": "draft_only", "args": {}}, "latency_s": 0.0, "result": result}
+            transcript.add(rec)
+            append_audit(self.audit_path, {"event": "draft_only", "record": rec})
+            if transcript_path:
+                transcript.write(Path(transcript_path))
+            return transcript
         messages: list[dict[str, Any]] = [{"role": "system", "content": ELIOT_SYSTEM}]
         result = "none"
         target_app: str | None = None

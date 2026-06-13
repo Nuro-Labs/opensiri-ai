@@ -6,6 +6,7 @@ from eliot_harness.guard import classify
 from eliot_harness.model import EliotModelClient
 from eliot_harness.permissions import PermissionState
 from eliot_harness.policy import PolicyDecision, PolicyEngine
+from eliot_harness.writing import is_draft_only_task, draft_from_context
 from eliot_harness.schema import normalize_action
 
 
@@ -59,3 +60,9 @@ def test_policy_requires_approval_for_delete():
     engine = PolicyEngine(PermissionState())
     result = engine.evaluate(normalize_action({"name": "run_shell", "args": {"cmd": "rm /tmp/x"}}))
     assert result.decision == PolicyDecision.REQUIRE_APPROVAL
+
+
+def test_draft_only_detection_and_output():
+    assert is_draft_only_task("Draft an email to Alex. Do not send it.")
+    draft = draft_from_context("Draft an email asking to accelerate delivery. Do not send it.", "Alex Chen alex@example.test ventilation 240V concise")
+    assert "Draft email" in draft and "Subject:" in draft and "delivery" in draft.lower()
