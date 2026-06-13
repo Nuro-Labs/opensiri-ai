@@ -16,15 +16,17 @@ struct FloatingWindowConfigurator: NSViewRepresentable {
     private func configure(_ window: NSWindow) {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
-        window.isMovableByWindowBackground = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.isMovableByWindowBackground = false
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = true
         window.level = .floating
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        window.standardWindowButton(.closeButton)?.isHidden = true
-        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
-        window.standardWindowButton(.zoomButton)?.isHidden = true
+        window.standardWindowButton(.closeButton)?.isHidden = false
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = false
+        window.standardWindowButton(.zoomButton)?.isHidden = false
+        window.makeKeyAndOrderFront(nil)
 
         let target = expanded ? NSSize(width: 940, height: 690) : NSSize(width: 680, height: 138)
         if abs(window.frame.width - target.width) > 8 || abs(window.frame.height - target.height) > 8 {

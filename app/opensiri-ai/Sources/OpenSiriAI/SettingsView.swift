@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject private var state: AppState
     @State private var hypersaveKey = ""
     @State private var visionKey = ""
+    @State private var analysisKey = ""
     @State private var keyStatus = ""
 
     var body: some View {
@@ -26,6 +27,13 @@ struct SettingsView: View {
                     TextField("Vision model name", text: $state.visionModelName)
                     SecureField("Vision API key", text: $visionKey)
                     Button("Save Vision Key") { keyStatus = Keychain.save(service: "opensiri-ai", account: "vision-api-key", value: visionKey) ? "Vision key saved" : "Vision key failed" }
+                }
+                Section("Analysis Model") {
+                    TextField("Analysis model URL", text: $state.analysisModelURL)
+                    TextField("Analysis model name", text: $state.analysisModelName)
+                    SecureField("Analysis API key", text: $analysisKey)
+                    Button("Save Analysis Key") { keyStatus = Keychain.save(service: "opensiri-ai", account: "analysis-api-key", value: analysisKey) ? "Analysis key saved" : "Analysis key failed" }
+                    Text("Used only after OpenSiri extracts bounded text from allowed files locally.").font(.caption).foregroundStyle(.secondary)
                 }
                 Section("Hypersave") {
                     TextField("Base URL", text: $state.hypersaveBaseURL)

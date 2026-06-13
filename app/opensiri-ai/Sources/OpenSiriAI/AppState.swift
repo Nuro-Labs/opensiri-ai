@@ -60,6 +60,8 @@ final class AppState: ObservableObject {
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
     @Published var visionModelURL: String = UserDefaults.standard.string(forKey: "visionModelURL") ?? ""
     @Published var visionModelName: String = UserDefaults.standard.string(forKey: "visionModelName") ?? ""
+    @Published var analysisModelURL: String = UserDefaults.standard.string(forKey: "analysisModelURL") ?? ""
+    @Published var analysisModelName: String = UserDefaults.standard.string(forKey: "analysisModelName") ?? ""
     @Published var hypersaveBaseURL: String = UserDefaults.standard.string(forKey: "hypersaveBaseURL") ?? "https://api.hypersave.io"
     @Published var repoRoot: String = AppState.initialRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
@@ -98,7 +100,7 @@ final class AppState: ObservableObject {
     var sessionDir: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/share/opensiri-ai/sessions") }
 
     var sourceChips: [String] {
-        var chips = ["Guarded", "Audit"]
+        var chips: [String] = []
         if liveAX { chips.append("Screen") }
         if enableMemory { chips.append("Memory") }
         if enableMemoryWrite { chips.append("Memory Write") }
@@ -118,6 +120,7 @@ final class AppState: ObservableObject {
         if enableBrowser { chips.append("Browser") }
         if enableSystem { chips.append("System") }
         if !visionModelURL.isEmpty && !visionModelName.isEmpty { chips.append("Vision Model") }
+        if !analysisModelURL.isEmpty && !analysisModelName.isEmpty { chips.append("Analysis Model") }
         if enableMaps { chips.append("Maps") }
         if enableMusic { chips.append("Music") }
         if enablePodcasts { chips.append("Podcasts") }
@@ -169,6 +172,8 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(modelName, forKey: "modelName")
         UserDefaults.standard.set(visionModelURL, forKey: "visionModelURL")
         UserDefaults.standard.set(visionModelName, forKey: "visionModelName")
+        UserDefaults.standard.set(analysisModelURL, forKey: "analysisModelURL")
+        UserDefaults.standard.set(analysisModelName, forKey: "analysisModelName")
         UserDefaults.standard.set(hypersaveBaseURL, forKey: "hypersaveBaseURL")
         UserDefaults.standard.set(repoRoot, forKey: "repoRoot")
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")

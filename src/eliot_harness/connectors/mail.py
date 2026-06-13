@@ -52,6 +52,7 @@ class MailConnector(Connector):
         seen: set[str] = set()
         for batch in (
             self._applescript_metadata_search(terms, days=days, scan_limit=scan_limit, limit=limit),
+            self._applescript_recent_scan_search(terms, scan_limit=scan_limit, limit=limit),
             self.spotlight_search(query, limit=limit),
             self.emlx_search(query, limit=max(limit, 20)),
         ):
@@ -95,6 +96,30 @@ end tell'''
             score = sum(1 for term in terms if term in low)
             if score:
                 ranked.append((score, ConnectorResult(row.text, {"source": self.source, "kind": "mail_search", "terms": terms, "score": score})))
+        ranked.sort(key=lambda x: x[0], reverse=True)
+        return [r for _, r in ranked[:limit]]
+
+    def _applescript_recent_scan_search(self, terms: list[str], scan_limit: int = 120, limit: int = 10) -> list[ConnectorResult]:
+        scan_limit = max(1, min(scan_limit, 250))
+        limit = max(1, min(limit, 25))
+        script = '''tell application "Mail"
+set out to {}
+set i to 0
+set msgs to messages 1 thru ''' + str(scan_limit) + ''' of inbox
+repeat with m in msgs
+  set i to i + 1
+  set end of out to "Subject: " & (subject of m) & " | From: " & (sender of m) & " | Date: " & ((date received of m) as string)
+end repeat
+return out
+end tell'''
+        out = run_osa(script, timeout=35)
+        rows = self._split_results(out, "mail_recent_scan")
+        ranked: list[tuple[int, ConnectorResult]] = []
+        for row in rows:
+            low = row.text.lower()
+            score = sum(1 for term in terms if term in low)
+            if score:
+                ranked.append((score, ConnectorResult(row.text, {"source": self.source, "kind": "mail_recent_scan", "terms": terms, "score": score})))
         ranked.sort(key=lambda x: x[0], reverse=True)
         return [r for _, r in ranked[:limit]]
 

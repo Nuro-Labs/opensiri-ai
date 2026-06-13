@@ -10,7 +10,7 @@ from .approval import ApprovalProvider, DenyAllApproval
 from .audit import append_audit
 from .context import ContextCompiler
 from .executor import Executor
-from .guard import classify
+from .guard import Verdict, classify
 from .model import EliotModelClient
 from .policy import PolicyDecision, PolicyEngine
 from .prompt import ELIOT_SYSTEM
@@ -92,6 +92,20 @@ class HarnessRuntime:
                     append_audit(self.audit_path, {"event": "guard_block", "record": rec})
                     result = 'user: "No — blocked by safety guard."'
                     continue
+            if action.name == "ask_user" and self._requires_app_confirmation(str(action.args.get("question", ""))):
+                decision = self.approval.approve(action, Verdict(True, str(action.args.get("question", "approval requested")), "external"))
+                rec["approval"] = decision.__dict__
+                if not decision.approved:
+                    rec["result"] = "blocked-by-user"
+                    transcript.add(rec)
+                    append_audit(self.audit_path, {"event": "user_block", "record": rec})
+                    result = 'user: "No — not approved."'
+                    continue
+                result = 'user: "Approved."'
+                rec["result"] = result
+                transcript.add(rec)
+                append_audit(self.audit_path, {"event": "user_approved", "record": rec})
+                continue
             if action.name == "open_app":
                 target_app = str(action.args.get("name", "")) or target_app
             executed = self.executor.execute(action)
@@ -109,3 +123,8 @@ class HarnessRuntime:
             transcript.write(Path(transcript_path))
         save_session(session)
         return transcript
+
+    @staticmethod
+    def _requires_app_confirmation(question: str) -> bool:
+        q = question.lower()
+        return any(x in q for x in ("delete", "remove", "send", "archive", "trash", "approve", "confirm", "unsubscribe", "close tab", "lock", "sleep"))

@@ -24,6 +24,7 @@ from .connectors.calendar import CalendarConnector
 from .connectors.system_control import SystemControlConnector
 from .connectors.shortcuts import ShortcutsConnector
 from . import mac_ax
+from .analysis_model import AnalysisModelClient
 from .local_index import LocalIndex
 from .permissions import PermissionState, Source
 from .schema import Action
@@ -113,6 +114,8 @@ class Executor:
             return ExecutionResult(self.messages.send_message(str(args.get("recipient", "")), str(args.get("text", ""))).text, terminal=True)
         if name == "file_search":
             return ExecutionResult(self._file_search(str(args.get("query", "")), int(args.get("limit", 8))), terminal=True)
+        if name == "file_analyze":
+            return ExecutionResult(self._file_analyze(str(args.get("query", "")), str(args.get("question", "What is this file about?")), str(args.get("path", ""))), terminal=True)
         if name == "reminders_list":
             return ExecutionResult(self._reminders_list(int(args.get("limit", 20))), terminal=True)
         if name == "calendar_free_busy":
@@ -135,6 +138,8 @@ class Executor:
             if not self.browser.can_write:
                 return ExecutionResult(self.browser.open_youtube_liked(dry_run=True).text, terminal=True)
             return ExecutionResult(self.browser.open_youtube_liked(dry_run=False).text)
+        if name == "browser_play_last_youtube":
+            return ExecutionResult(self.browser.last_watched_youtube(dry_run=not self.browser.can_write).text, terminal=True)
         if name == "browser_play_youtube":
             if not self.browser.can_write:
                 return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=True).text, terminal=True)
@@ -189,7 +194,32 @@ class Executor:
             hits = [h for h in self.local_index.search(query, limit=limit) if h.source == "files"]
             if hits:
                 return "\n\n".join(f"{h.title}\nURI: {h.uri}\n{h.content[:900]}" for h in hits)
-        return "no matching files found in local index"
+        live_hits = self.files.search_files(query, limit=limit)
+        if live_hits:
+            return "\n\n".join(h.text for h in live_hits)
+        return "no matching files found in local index or allowed folders"
+
+    def _file_analyze(self, query: str, question: str, path: str = "") -> str:
+        target = None
+        if path:
+            from pathlib import Path
+            p = Path(path).expanduser().resolve()
+            if self.files.is_allowed(str(p)) and p.is_file():
+                target = p
+        if target is None:
+            hits = self.files.search_files(query, limit=1)
+            if hits and hits[0].metadata and hits[0].metadata.get("path"):
+                from pathlib import Path
+                target = Path(str(hits[0].metadata["path"]))
+        if target is None:
+            return "no matching file found"
+        text = self.files.extract_text(target, max_chars=24000)
+        if not text.strip():
+            return f"{target.name}\nPath: {target}\nNo extractable text found."
+        analysis = AnalysisModelClient().analyze(question, text)
+        if analysis:
+            return f"{target.name}\nPath: {target}\n\n{analysis}"
+        return f"{target.name}\nPath: {target}\n\n{text[:1800]}"
 
     def _reminders_list(self, limit: int) -> str:
         if not self.reminders.can_read:
@@ -236,6 +266,7 @@ class Executor:
             "browser.close_tab": lambda: self.execute(Action("browser_close_tab", {"browser": args.get("browser", "Google Chrome")})),
             "browser.downloads": lambda: self.execute(Action("browser_open_downloads", {})),
             "browser.youtube_liked": lambda: self.execute(Action("browser_open_youtube_liked", {})),
+            "browser.youtube_last": lambda: self.execute(Action("browser_play_last_youtube", {})),
             "browser.youtube_play_visible": lambda: self.execute(Action("browser_play_youtube", {})),
             "web.search": lambda: self.execute(Action("web_search", {"query": args.get("query", ""), "max_results": args.get("max_results", 3)})),
             "system.status": lambda: self.execute(Action("system_control", {"action": "status"})),
@@ -362,6 +393,8 @@ class Executor:
         if verb == "bookmark":
             return ExecutionResult(self.browser.bookmark_current(dry_run=not self.browser.can_write).text, terminal=True)
         if verb == "youtube":
+            if str(args.get("mode", "")).lower() in {"last", "recent", "watched"} or "last" in str(args.get("query", "")).lower():
+                return self.execute(Action("browser_play_last_youtube", {}))
             return self.execute(Action("browser_open_youtube_liked", {}))
         if verb == "download":
             return self.execute(Action("browser_open_downloads", {}))

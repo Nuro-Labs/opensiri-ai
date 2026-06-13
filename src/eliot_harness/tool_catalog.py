@@ -61,6 +61,7 @@ IMPLEMENTED_TOOLS: list[MacTool] = [
     MacTool("browser.close_tab", "browser", "Close active browser tab", True),
     MacTool("browser.downloads", "browser", "Open Downloads folder", True),
     MacTool("browser.youtube_liked", "browser", "Open YouTube liked videos", True),
+    MacTool("browser.youtube_last", "browser", "Open last watched YouTube video", True),
     MacTool("browser.youtube_play_visible", "browser", "Play first visible YouTube video", True),
     MacTool("web.search", "web", "Search the web", True),
     MacTool("system.status", "system", "Read system status", True),

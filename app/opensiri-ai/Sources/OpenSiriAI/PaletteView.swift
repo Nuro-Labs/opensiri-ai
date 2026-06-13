@@ -4,14 +4,17 @@ struct PaletteView: View {
     @EnvironmentObject private var state: AppState
     @FocusState private var focused: Bool
     @State private var expanded = false
+    @State private var focusToken = 0
 
     var body: some View {
-        ZStack {
-            AuroraBackdrop()
+        Group {
             if expanded {
+                ZStack {
+                    AuroraBackdrop()
                 ExpandedSiriSurface(
                     state: state,
                     focused: $focused,
+                    focusToken: focusToken,
                     collapse: { expanded = false },
                     run: run,
                     stop: stop,
@@ -23,25 +26,30 @@ struct PaletteView: View {
                     denyRequest: denyRequest
                 )
                 .transition(.scale(scale: 0.96).combined(with: .opacity))
+                }
             } else {
-                CompactSiriSurface(state: state, focused: $focused, expand: { expanded = true }, run: run)
+                CompactSiriSurface(state: state, focused: $focused, focusToken: focusToken, expand: { expanded = true }, run: run)
                     .transition(.scale(scale: 1.03).combined(with: .opacity))
             }
         }
         .background(FloatingWindowConfigurator(expanded: expanded))
         .animation(.spring(response: 0.35, dampingFraction: 0.86), value: expanded)
-        .onAppear { focused = true }
-        .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focused = true }
-        .onReceive(NotificationCenter.default.publisher(for: .centerOpenSiriWindow)) { _ in recenterWindow() }
+        .onAppear { focusSoon() }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focusSoon() }
+        .onReceive(NotificationCenter.default.publisher(for: .centerOpenSiriWindow)) { _ in recenterWindow(); focusSoon() }
         .task { await pollApprovals() }
         .sheet(isPresented: $state.showHistory) { HistoryView(sessions: state.sessionSummaries) }
     }
 
     func run() {
-        guard !state.isRunning, !state.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let submitted = state.task.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !state.isRunning, !submitted.isEmpty else { return }
         if state.enableMemoryWrite { state.enableMemory = true }
         expanded = true
-        do { try HarnessBridge.run(task: state.task, state: state) }
+        do {
+            try HarnessBridge.run(task: submitted, state: state)
+            state.task = ""
+        }
         catch { state.output = "Failed to start harness: \(error)"; state.status = "Error"; state.isRunning = false }
     }
 
@@ -100,6 +108,9 @@ struct PaletteView: View {
 
     func recenterWindow() {
         guard let window = NSApp.keyWindow ?? NSApp.windows.first else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
         let target = expanded ? NSSize(width: 940, height: 690) : NSSize(width: 680, height: 138)
         if let screen = window.screen ?? NSScreen.main {
             let visible = screen.visibleFrame
@@ -110,11 +121,17 @@ struct PaletteView: View {
             window.setFrame(frame, display: true, animate: true)
         }
     }
+
+    func focusSoon() {
+        DispatchQueue.main.async { focused = true; focusToken += 1 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { focused = true; focusToken += 1 }
+    }
 }
 
 struct CompactSiriSurface: View {
     @ObservedObject var state: AppState
     var focused: FocusState<Bool>.Binding
+    let focusToken: Int
     let expand: () -> Void
     let run: () -> Void
 
@@ -124,17 +141,18 @@ struct CompactSiriSurface: View {
                 Image(systemName: state.isRunning ? "sparkles" : "magnifyingglass")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(state.isRunning ? .orange : .secondary)
-                TextField("Ask OpenSiri…", text: $state.task)
-                    .font(.system(size: 22, weight: .medium, design: .rounded))
-                    .textFieldStyle(.plain)
-                    .focused(focused)
-                    .onSubmit(run)
-                Button(action: expand) { Image(systemName: "arrow.up.left.and.arrow.down.right") }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                Button(action: run) { Image(systemName: "return") }
-                    .buttonStyle(.plain)
-                    .disabled(state.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isRunning)
+                NativeInput(text: $state.task, placeholder: "Ask OpenSiri…", fontSize: 24, focusToken: focusToken, onSubmit: run)
+                    .frame(height: 34)
+                HStack(spacing: 10) {
+                    Button(action: expand) { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                    Button(action: run) { Image(systemName: "arrow.up.circle.fill").font(.system(size: 24)) }
+                        .buttonStyle(.plain)
+                        .foregroundColor(state.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isRunning ? Color.secondary.opacity(0.45) : Color.primary)
+                        .disabled(state.task.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || state.isRunning)
+                }
+                .padding(.leading, 6)
             }
             if state.isRunning || !state.sourceChips.isEmpty {
                 HStack(spacing: 7) {
@@ -146,13 +164,13 @@ struct CompactSiriSurface: View {
         .padding(22)
         .frame(width: 640)
         .glassPanel(cornerRadius: 30)
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .bottomTrailing) {
             Text("⌥ Space")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(.white.opacity(0.48))
+                .background(.white.opacity(0.32))
                 .clipShape(Capsule())
                 .padding(12)
         }
@@ -163,6 +181,7 @@ struct CompactSiriSurface: View {
 struct ExpandedSiriSurface: View {
     @ObservedObject var state: AppState
     var focused: FocusState<Bool>.Binding
+    let focusToken: Int
     let collapse: () -> Void
     let run: () -> Void
     let stop: () -> Void
@@ -178,21 +197,21 @@ struct ExpandedSiriSurface: View {
             ConversationSidebar(state: state, clearConversation: clearConversation, openHistory: openHistory)
             Divider().opacity(0.35)
             VStack(spacing: 0) {
-                TopSearchBar(state: state, focused: focused, collapse: collapse, run: run, stop: stop)
+                TopSearchBar(state: state, collapse: collapse, run: run, stop: stop)
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(alignment: .leading, spacing: 18) {
                             if state.isRunning { WorkingRow(status: state.status) }
                             if let request = state.approvalRequest { ApprovalCard(request: request, approve: approveRequest, deny: denyRequest) }
                             ForEach(state.messages) { msg in MessageBubble(message: msg).id(msg.id) }
-                            if !state.technicalLog.isEmpty { LatestResultCard(text: state.technicalLog) }
+                            if state.showTechnicalLog && !state.technicalLog.isEmpty { LatestResultCard(text: state.technicalLog) }
                             SourceStrip(chips: state.sourceChips)
                         }
                         .padding(26)
                     }
                     .onChange(of: state.messages.count) { _, _ in if let last = state.messages.last { proxy.scrollTo(last.id, anchor: .bottom) } }
                 }
-                BottomComposer(state: state, focused: focused, run: run, openTranscript: openTranscript, openAudit: openAudit)
+                BottomComposer(state: state, focused: focused, focusToken: focusToken, run: run, openTranscript: openTranscript, openAudit: openAudit)
             }
         }
         .frame(minWidth: 860, idealWidth: 920, maxWidth: 1080, minHeight: 620, idealHeight: 690)
@@ -219,14 +238,18 @@ struct ConversationSidebar: View {
                     Text("Mac assistant").font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(action: openHistory) { Image(systemName: "line.3.horizontal.decrease") }.buttonStyle(.plain)
-                Button(action: clearConversation) { Image(systemName: "square.and.pencil") }.buttonStyle(.plain)
+                Button(action: openHistory) { Label("History", systemImage: "clock.arrow.circlepath").labelStyle(.iconOnly) }
+                    .buttonStyle(.borderless)
+                    .help("Conversation history")
+                Button(action: clearConversation) { Label("New", systemImage: "square.and.pencil").labelStyle(.iconOnly) }
+                    .buttonStyle(.borderless)
+                    .help("New conversation")
             }
             Text("Today").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            SidebarCard(title: "New Conversation", subtitle: state.task.isEmpty ? "Ready for a Mac action" : state.task)
-            SidebarCard(title: "Mail & Messages", subtitle: "Backend search, citations, safe reads")
-            SidebarCard(title: "Files & Finder", subtitle: "Receipts, PDFs, notes, spreadsheets")
-            SidebarCard(title: "Actions", subtitle: "Notes, reminders, calendar, approvals")
+            SidebarCard(icon: "plus.message", title: "New Conversation", subtitle: state.task.isEmpty ? "Ready for a Mac action" : state.task)
+            SidebarCard(icon: "envelope.badge", title: "Mail & Messages", subtitle: "Backend search and safe reads")
+            SidebarCard(icon: "folder", title: "Files & Finder", subtitle: "Indexed files and Finder tools")
+            SidebarCard(icon: "checklist", title: "Actions", subtitle: "Notes, reminders, calendar")
             Spacer()
             VStack(alignment: .leading, spacing: 6) {
                 StatusPill(status: state.status, running: state.isRunning)
@@ -242,23 +265,31 @@ struct ConversationSidebar: View {
 }
 
 struct SidebarCard: View {
+    let icon: String
     let title: String
     let subtitle: String
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 14, weight: .semibold))
-            Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 13, weight: .semibold))
+                Text(subtitle).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.white.opacity(0.42))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(.white.opacity(0.24))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
 struct TopSearchBar: View {
     @ObservedObject var state: AppState
-    var focused: FocusState<Bool>.Binding
     let collapse: () -> Void
     let run: () -> Void
     let stop: () -> Void
@@ -268,10 +299,10 @@ struct TopSearchBar: View {
             Button(action: collapse) { Image(systemName: "arrow.down.right.and.arrow.up.left") }.buttonStyle(.plain).foregroundStyle(.secondary)
             HStack(spacing: 9) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("Search or ask OpenSiri", text: $state.task)
-                    .textFieldStyle(.plain)
-                    .focused(focused)
-                    .onSubmit(run)
+                Text(state.isRunning ? "Working on your Mac…" : "OpenSiri conversation")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 0)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
@@ -292,6 +323,7 @@ struct TopSearchBar: View {
 struct BottomComposer: View {
     @ObservedObject var state: AppState
     var focused: FocusState<Bool>.Binding
+    let focusToken: Int
     let run: () -> Void
     let openTranscript: () -> Void
     let openAudit: () -> Void
@@ -300,10 +332,8 @@ struct BottomComposer: View {
         VStack(spacing: 10) {
             HStack(spacing: 8) {
                 Button(action: {}) { Image(systemName: "plus") }.buttonStyle(.plain)
-                TextField("Ask Siri-style…", text: $state.task)
-                    .textFieldStyle(.plain)
-                    .focused(focused)
-                    .onSubmit(run)
+                NativeInput(text: $state.task, placeholder: "Ask Siri-style…", fontSize: 15, focusToken: focusToken, onSubmit: run)
+                    .frame(height: 22)
                 Button(action: run) { Image(systemName: "arrow.up.circle.fill").font(.title2) }.buttonStyle(.plain).disabled(state.task.isEmpty || state.isRunning)
                 Button(action: {}) { Image(systemName: "mic.fill") }.buttonStyle(.plain)
             }
@@ -311,13 +341,16 @@ struct BottomComposer: View {
             .padding(.vertical, 11)
             .background(.white.opacity(0.68))
             .clipShape(Capsule())
-            HStack {
-                Button("Transcript", action: openTranscript).disabled(state.lastTranscript.isEmpty)
-                Button("Audit", action: openAudit)
-                Toggle("AX", isOn: $state.liveAX).toggleStyle(.switch).scaleEffect(0.72)
-                Spacer()
-                if state.showTechnicalLog { Text(state.technicalLog.suffix(120)).font(.caption2.monospaced()).foregroundStyle(.secondary) }
-                Button(state.showTechnicalLog ? "Hide Log" : "Log") { state.showTechnicalLog.toggle() }
+            DisclosureGroup("Advanced", isExpanded: $state.showTechnicalLog) {
+                HStack {
+                    Button("Transcript", action: openTranscript).disabled(state.lastTranscript.isEmpty)
+                    Button("Audit", action: openAudit)
+                    Toggle("Screen context", isOn: $state.liveAX).toggleStyle(.switch).scaleEffect(0.78)
+                    Spacer()
+                }
+                if !state.technicalLog.isEmpty {
+                    Text(state.technicalLog.suffix(180)).font(.caption2.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)

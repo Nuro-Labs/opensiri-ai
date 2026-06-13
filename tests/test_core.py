@@ -102,6 +102,11 @@ def test_model_repairs_natural_final_answer():
     assert action and action.name == "done" and "Notes" in action.args["summary"]
 
 
+def test_model_does_not_show_partial_tool_call():
+    client = EliotModelClient()
+    assert client._parse_action({"content": "<tool_call>"}) is None
+
+
 def test_memory_connector_handles_missing_client():
     from eliot_harness.connectors.memory import MemoryConnector
     c = MemoryConnector(None)
@@ -211,6 +216,11 @@ def test_model_full_foundry_url():
     assert EliotModelClient(base_url=url, model="grok-4.3").chat_url() == url
 
 
+def test_analysis_client_unconfigured():
+    from eliot_harness.analysis_model import AnalysisModelClient
+    assert AnalysisModelClient(base_url="", model="").analyze("x", "y") == ""
+
+
 def test_reference_resolver_latest_draft():
     store = ReferenceStore()
     store.add("draft", "email draft", "hello")
@@ -235,6 +245,7 @@ def test_files_connector_path_boundary(tmp_path):
     assert c.is_allowed(str(good))
     assert not c.is_allowed(str(bad))
     assert "hello" in c.read_file(str(good)).text
+    assert c.search_files("a.txt", limit=1)
 
 
 def test_registry_applies_config():

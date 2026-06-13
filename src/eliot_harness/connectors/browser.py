@@ -18,7 +18,7 @@ from .applescript import q, run_osa
 from .base import Connector, ConnectorResult
 
 
-CHROME_EPOCH = dt.datetime(1601, 1, 1, tzinfo=dt.UTC)
+CHROME_EPOCH = dt.datetime(1601, 1, 1, tzinfo=dt.timezone.utc)
 YOUTUBE_LIKED_URL = "https://www.youtube.com/playlist?list=LL"
 YOUTUBE_HOME_URL = "https://www.youtube.com/"
 
@@ -153,6 +153,23 @@ end tell'''
     def open_youtube_liked(self, dry_run: bool = True) -> ConnectorResult:
         """Open the signed-in user's YouTube liked videos playlist."""
         return self.open_url(YOUTUBE_LIKED_URL, dry_run=dry_run)
+
+    def last_watched_youtube(self, dry_run: bool = True) -> ConnectorResult:
+        """Open the most recent YouTube watch URL from Chrome history."""
+        hits = []
+        for query in ("youtube.com/watch", "youtu.be"):
+            hits.extend(self.search_history(query, limit=10))
+        watch = None
+        for hit in hits:
+            url = (hit.metadata or {}).get("url") if hit.metadata else None
+            if isinstance(url, str) and ("youtube.com/watch" in url or "youtu.be/" in url):
+                watch = url
+                break
+        if not watch:
+            return ConnectorResult("no recently watched YouTube video found in Chrome history", {"source": self.source})
+        if dry_run:
+            return ConnectorResult(f"DRY RUN open last watched YouTube video: {watch}", {"source": self.source, "url": watch})
+        return self.open_url(watch, dry_run=False)
 
     def play_first_visible_youtube_video(self, dry_run: bool = True) -> ConnectorResult:
         """Navigate/play the first visible YouTube video in the active Chrome tab.

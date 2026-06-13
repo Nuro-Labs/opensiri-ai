@@ -14,7 +14,8 @@ class FilesConnector(Connector):
     name = "files"
 
     def __init__(self, roots: list[str] | None = None):
-        self.roots = [Path(r).expanduser().resolve() for r in (roots or [os.getcwd()])]
+        default_roots = [Path.home() / "Documents", Path.home() / "Desktop", Path.home() / "Downloads", Path(os.getcwd())]
+        self.roots = [Path(r).expanduser().resolve() for r in (roots or [str(p) for p in default_roots if p.exists()])]
 
     def read_context(self, task: str) -> list[ConnectorResult]:
         results = [ConnectorResult(text=f"Files root available: {root}", metadata={"root": str(root)}) for root in self.roots]
@@ -92,6 +93,35 @@ end tell'''
                 files.extend([p for p in root.rglob("*") if p.is_file()][:1000])
         files = sorted(files, key=lambda p: p.stat().st_size if p.exists() else 0, reverse=True)[:limit]
         return ConnectorResult("\n".join(f"{p.stat().st_size}\t{p}" for p in files) or "no large files", {"source": self.source})
+
+    def search_files(self, query: str, limit: int = 20, max_files: int = 5000) -> list[ConnectorResult]:
+        terms = [t.lower() for t in query.replace("_", " ").split() if len(t) > 1]
+        if not terms:
+            return []
+        hits: list[tuple[int, Path]] = []
+        scanned = 0
+        for root in self.roots:
+            if not root.exists():
+                continue
+            for p in root.rglob("*"):
+                if scanned >= max_files:
+                    break
+                if not p.is_file():
+                    continue
+                scanned += 1
+                name = p.name.lower()
+                score = sum(1 for term in terms if term in name)
+                if score:
+                    hits.append((score, p))
+            if scanned >= max_files:
+                break
+        hits.sort(key=lambda x: (x[0], x[1].stat().st_mtime if x[1].exists() else 0), reverse=True)
+        out = []
+        for _, p in hits[: max(1, min(limit, 50))]:
+            text = self.extract_text(p, max_chars=1600)
+            snippet = ("\n" + text[:1200]) if text else ""
+            out.append(ConnectorResult(f"{p.name}\nPath: {p}{snippet}", {"source": self.source, "path": str(p)}))
+        return out
 
     def checksum(self, path: str) -> ConnectorResult:
         p = Path(path).expanduser().resolve()

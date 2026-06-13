@@ -70,6 +70,8 @@ class EliotModelClient:
         m = TC_RE.search(content)
         if not m:
             content = content.strip()
+            if "<tool_call" in content:
+                return None
             if content:
                 return normalize_action({"name": "done", "args": {"summary": content}})
             return None
