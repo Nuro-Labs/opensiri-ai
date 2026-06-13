@@ -26,13 +26,17 @@ struct PaletteView: View {
                 Toggle("Live AX", isOn: $state.liveAX)
                 Spacer()
                 Button("Stop") { stop() }.disabled(!state.isRunning)
+                Button("Transcript") { openTranscript() }.disabled(state.lastTranscript.isEmpty)
                 Button("Run") { run() }.keyboardShortcut(.return, modifiers: [.command]).disabled(state.task.isEmpty || state.isRunning)
             }
             HStack { Chip("Guarded"); Chip("AX Screen"); Chip("Hypersave"); Chip("Audit"); Chip("Permissions") }
             ScrollView { Text(state.output).font(.system(.body, design: .monospaced)).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled).padding(12) }
                 .background(Color(NSColor.textBackgroundColor)).clipShape(RoundedRectangle(cornerRadius: 12))
             if !state.lastTranscript.isEmpty { Text("Transcript: \(state.lastTranscript)").font(.caption).foregroundStyle(.secondary) }
-        }.padding(24).onAppear { focused = true }
+        }
+        .padding(24)
+        .onAppear { focused = true }
+        .onReceive(NotificationCenter.default.publisher(for: .focusPalette)) { _ in focused = true }
     }
 
     func run() {
@@ -42,6 +46,11 @@ struct PaletteView: View {
     }
 
     func stop() { state.process?.terminate(); state.process = nil; state.isRunning = false; state.status = "Stopped" }
+
+    func openTranscript() {
+        guard !state.lastTranscript.isEmpty else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: state.lastTranscript)])
+    }
 }
 
 struct Chip: View {

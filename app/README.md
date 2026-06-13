@@ -10,11 +10,21 @@ Build:
 app/opensiri-ai/scripts/build.sh
 ```
 
+Package an unsigned `.app` bundle:
+
+```bash
+app/opensiri-ai/scripts/package.sh
+```
+
 Run:
 
 ```bash
 app/opensiri-ai/.build/release/OpenSiriAI
 ```
+
+Global hotkey: `Option-Space` focuses the palette while the app is running.
+
+Design direction: Raycast-style command palette, but native SwiftUI and backed by the deterministic Eliot harness.
 
 Planned UI surfaces:
 
