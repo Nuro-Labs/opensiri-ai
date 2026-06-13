@@ -7,7 +7,7 @@ final class AppState: ObservableObject {
     @Published var status: String = "Idle"
     @Published var modelURL: String = UserDefaults.standard.string(forKey: "modelURL") ?? "http://localhost:8081"
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
-    @Published var repoRoot: String = UserDefaults.standard.string(forKey: "repoRoot") ?? FileManager.default.currentDirectoryPath
+    @Published var repoRoot: String = UserDefaults.standard.string(forKey: "repoRoot") ?? AppState.detectRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
@@ -17,6 +17,35 @@ final class AppState: ObservableObject {
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
     var process: Process?
+
+    static func detectRepoRoot() -> String {
+        let fm = FileManager.default
+        let cwd = fm.currentDirectoryPath
+        let home = fm.homeDirectoryForCurrentUser.path
+        let candidates = [
+            cwd,
+            home + "/Downloads/eliot-harness",
+            home + "/Downloads/opensiri-ai",
+            home + "/Projects/eliot-harness",
+            home + "/Projects/opensiri-ai"
+        ]
+        for path in candidates {
+            if fm.fileExists(atPath: path + "/src/eliot_harness") {
+                return path
+            }
+        }
+        return home + "/Library/Application Support/opensiri-ai"
+    }
+
+    func dataRoot() -> URL {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: repoRoot + "/src/eliot_harness") {
+            return URL(fileURLWithPath: repoRoot)
+        }
+        let url = fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/opensiri-ai")
+        try? fm.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
 
     func persist() {
         UserDefaults.standard.set(modelURL, forKey: "modelURL")

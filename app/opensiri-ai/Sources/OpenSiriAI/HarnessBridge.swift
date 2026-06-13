@@ -5,14 +5,15 @@ enum HarnessBridge {
     static func run(task: String, state: AppState) throws {
         state.persist()
         let root = URL(fileURLWithPath: state.repoRoot)
+        let dataRoot = state.dataRoot()
         let candidates = [root.appendingPathComponent(".venv/bin/python").path, "/usr/bin/python3"]
         let python = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"
-        let transcriptDir = root.appendingPathComponent("results/app-transcripts")
+        let transcriptDir = dataRoot.appendingPathComponent("results/app-transcripts")
         try FileManager.default.createDirectory(at: transcriptDir, withIntermediateDirectories: true)
         let transcript = transcriptDir.appendingPathComponent("latest.json").path
         state.lastTranscript = transcript
 
-        var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", root.appendingPathComponent("results/app-audit.jsonl").path]
+        var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", dataRoot.appendingPathComponent("results/app-audit.jsonl").path]
         args += ["--config", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/opensiri-ai/config.json").path]
         if state.enableMemory { args.append("--enable-memory") }
         if state.enableFiles { args.append("--enable-files") }
