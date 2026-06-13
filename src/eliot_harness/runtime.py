@@ -19,6 +19,7 @@ from .transcript import Transcript
 from . import mac_ax
 from .writing import draft_from_context, is_draft_only_task
 from .session import SessionState
+from .session_store import save_session
 
 
 class HarnessRuntime:
@@ -96,4 +97,5 @@ class HarnessRuntime:
                 break
         if transcript_path:
             transcript.write(Path(transcript_path))
+        save_session(session)
         return transcript

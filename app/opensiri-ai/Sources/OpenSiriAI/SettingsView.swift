@@ -22,6 +22,7 @@ struct SettingsView: View {
                 Toggle("Hypersave Memory", isOn: $state.enableMemory)
                 Toggle("Files / Finder Selection", isOn: $state.enableFiles)
                 Toggle("Web / World Knowledge", isOn: $state.enableWeb)
+                Toggle("Visual / Screenshot", isOn: $state.enableVisual)
                 Toggle("Live Accessibility Tree", isOn: $state.liveAX)
                 Button("Save Source Settings") { state.persist() }
             }

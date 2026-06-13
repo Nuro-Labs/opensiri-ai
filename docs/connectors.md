@@ -15,10 +15,11 @@ Connectors expose user-approved context to Eliot. They do not automatically dump
 - `MailConnector`: reads recent subjects only when enabled; drafts by default; sending is approval-only.
 - `MessagesConnector`: drafts by default; sending is approval-only.
 - `SafariConnector`: reads tab names when enabled.
+- `VisualConnector`: disabled by default; interactive screenshot capture scaffold for future OCR/VLM.
 
 ## Planned
 
-- Visual connector: screenshots/OCR/VLM later.
+- OCR/VLM over captured screenshots.
 - Rich Mail/Calendar/Contacts connectors using native frameworks/App Intents instead of AppleScript bridges.
 
 Each connector must declare:

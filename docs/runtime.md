@@ -31,6 +31,15 @@ Approval modes:
 - `console`: ask in the terminal.
 - `yes`: test mode only.
 
+Source flags:
+
+- `--enable-memory`
+- `--enable-files --files-root <path>`
+- `--enable-web`
+- `--enable-visual`
+
+Sessions are persisted under `~/.local/share/opensiri-ai/sessions` for future reference resolution and conversation history.
+
 Enable Hypersave context:
 
 ```bash

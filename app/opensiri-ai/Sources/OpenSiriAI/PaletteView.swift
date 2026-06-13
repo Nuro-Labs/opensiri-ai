@@ -25,6 +25,7 @@ struct PaletteView: View {
                 Toggle("Memory", isOn: $state.enableMemory)
                 Toggle("Files", isOn: $state.enableFiles)
                 Toggle("Web", isOn: $state.enableWeb)
+                Toggle("Visual", isOn: $state.enableVisual)
                 Toggle("Live AX", isOn: $state.liveAX)
                 Spacer()
                 Button("Stop") { stop() }.disabled(!state.isRunning)

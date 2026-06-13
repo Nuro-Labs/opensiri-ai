@@ -16,6 +16,7 @@ enum HarnessBridge {
         if state.enableMemory { args.append("--enable-memory") }
         if state.enableFiles { args.append("--enable-files") }
         if state.enableWeb { args.append("--enable-web") }
+        if state.enableVisual { args.append("--enable-visual") }
         if state.liveAX { args.append("--live-ax") }
 
         let p = Process()

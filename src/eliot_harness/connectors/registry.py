@@ -14,6 +14,7 @@ from .messages import MessagesConnector
 from .notes import NotesConnector
 from .reminders import RemindersConnector
 from .safari import SafariConnector
+from .visual import VisualConnector
 from .web import WebConnector
 
 
@@ -29,6 +30,7 @@ def build_registry(config: HarnessConfig, memory_client: HypersaveClient | None 
         "mail": MailConnector(),
         "messages": MessagesConnector(),
         "safari": SafariConnector(),
+        "photos": VisualConnector(),
         "web": WebConnector(enabled=config.network_enabled),
     }
     for name, connector in connectors.items():

@@ -121,3 +121,19 @@ def test_registry_applies_config():
     cfg.sources["files"].read = True
     reg = build_registry(cfg, None, ["/tmp"])
     assert reg.get("files").can_read
+
+
+def test_session_store_roundtrip(tmp_path):
+    from eliot_harness.session import SessionState
+    from eliot_harness.session_store import save_session, load_session
+    s = SessionState(task="hello")
+    s.references.add("draft", "draft", "body")
+    p = save_session(s, tmp_path)
+    loaded = load_session(p.stem, tmp_path)
+    assert loaded and loaded.references.latest("draft").value == "body"
+
+
+def test_visual_connector_disabled():
+    from eliot_harness.connectors.visual import VisualConnector
+    c = VisualConnector()
+    assert "disabled" in c.capture_interactive().text

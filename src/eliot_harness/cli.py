@@ -30,6 +30,7 @@ def main() -> None:
     ap.add_argument("--enable-files", action="store_true")
     ap.add_argument("--files-root", action="append", default=[])
     ap.add_argument("--config", default=None)
+    ap.add_argument("--enable-visual", action="store_true")
     ap.add_argument("--live-ax", action="store_true", help="observe the live macOS Accessibility tree each turn")
     args = ap.parse_args()
 
@@ -39,6 +40,8 @@ def main() -> None:
         cfg.sources["web"].read = True
     if args.enable_files:
         cfg.sources["files"].read = True
+    if args.enable_visual:
+        cfg.sources["photos"].read = True
     if args.enable_memory:
         cfg.sources["hypersave"].read = True
     memory_client = HypersaveClient.from_env() if cfg.sources["hypersave"].read else None

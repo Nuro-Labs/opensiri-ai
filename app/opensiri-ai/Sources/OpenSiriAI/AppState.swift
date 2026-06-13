@@ -12,6 +12,7 @@ final class AppState: ObservableObject {
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
     @Published var enableFiles: Bool = UserDefaults.standard.bool(forKey: "enableFiles")
     @Published var enableWeb: Bool = UserDefaults.standard.bool(forKey: "enableWeb")
+    @Published var enableVisual: Bool = UserDefaults.standard.bool(forKey: "enableVisual")
     @Published var liveAX: Bool = true
     @Published var isRunning: Bool = false
     @Published var lastTranscript: String = ""
@@ -25,5 +26,6 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(enableMemory, forKey: "enableMemory")
         UserDefaults.standard.set(enableFiles, forKey: "enableFiles")
         UserDefaults.standard.set(enableWeb, forKey: "enableWeb")
+        UserDefaults.standard.set(enableVisual, forKey: "enableVisual")
     }
 }
