@@ -35,6 +35,7 @@ enum HarnessBridge {
         var env = ProcessInfo.processInfo.environment
         env["PYTHONPATH"] = root.appendingPathComponent("src").path
         if (state.enableMemory || state.enableMemoryWrite), env["HYPERSAVE_API_KEY"] == nil, let key = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key") { env["HYPERSAVE_API_KEY"] = key }
+        if state.enableMemory || state.enableMemoryWrite { env["HYPERSAVE_BASE_URL"] = state.hypersaveBaseURL }
         p.environment = env
 
         let pipe = Pipe()

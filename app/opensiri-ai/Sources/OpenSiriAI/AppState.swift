@@ -7,6 +7,7 @@ final class AppState: ObservableObject {
     @Published var status: String = "Idle"
     @Published var modelURL: String = UserDefaults.standard.string(forKey: "modelURL") ?? "http://localhost:8081"
     @Published var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
+    @Published var hypersaveBaseURL: String = UserDefaults.standard.string(forKey: "hypersaveBaseURL") ?? "https://api.hypersave.io"
     @Published var repoRoot: String = AppState.initialRepoRoot()
     @Published var approvalMode: String = UserDefaults.standard.string(forKey: "approvalMode") ?? "deny"
     @Published var enableMemory: Bool = UserDefaults.standard.bool(forKey: "enableMemory")
@@ -62,6 +63,7 @@ final class AppState: ObservableObject {
     func persist() {
         UserDefaults.standard.set(modelURL, forKey: "modelURL")
         UserDefaults.standard.set(modelName, forKey: "modelName")
+        UserDefaults.standard.set(hypersaveBaseURL, forKey: "hypersaveBaseURL")
         UserDefaults.standard.set(repoRoot, forKey: "repoRoot")
         UserDefaults.standard.set(approvalMode, forKey: "approvalMode")
         UserDefaults.standard.set(enableMemory, forKey: "enableMemory")

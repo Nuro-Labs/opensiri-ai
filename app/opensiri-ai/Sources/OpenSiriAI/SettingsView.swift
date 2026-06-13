@@ -14,6 +14,7 @@ struct SettingsView: View {
                 Button("Save Settings") { state.persist() }
             }
             Section("Hypersave") {
+                TextField("Base URL", text: $state.hypersaveBaseURL)
                 SecureField("Hypersave API key", text: $hypersaveKey)
                 Button("Save to Keychain") { keyStatus = Keychain.save(service: "opensiri-ai", account: "hypersave-api-key", value: hypersaveKey) ? "Saved" : "Failed" }
                 Text(keyStatus).foregroundStyle(.secondary)
