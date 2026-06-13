@@ -2,6 +2,20 @@
 
 Product app target: Spotlight-style command palette for Eliot.
 
+The Swift package lives in `app/opensiri-ai`.
+
+Build:
+
+```bash
+app/opensiri-ai/scripts/build.sh
+```
+
+Run:
+
+```bash
+app/opensiri-ai/.build/release/OpenSiriAI
+```
+
 Planned UI surfaces:
 
 - Option-Space command palette.
