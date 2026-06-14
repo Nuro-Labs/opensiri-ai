@@ -10,7 +10,7 @@
 
 ## 🧠 Personal Context Grounding with Hypersave API
 
-To enable advanced personal context grounding, cross-turn episodic memory, and cognitive-association search, OpenSiri-AI integrates natively with the **Hypersave API**. 
+To enable advanced personal context grounding, cross-turn episodic memory, and cognitive-association search, OpenSiri-AI integrates natively with the **Hypersave API**. **Hypersave is our flagship cognitive-memory product, proudly powered by Nuro AI Labs**.
 
 To use this integration:
 1. Sign up and get a personal context API key at **[platform.hypersave.io](https://platform.hypersave.io)**.
