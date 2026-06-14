@@ -11,8 +11,14 @@ enum HarnessBridge {
         state.repoRoot = codeRootPath
         state.persist()
         let root = URL(fileURLWithPath: codeRootPath)
+        let parentRoot = root.deletingLastPathComponent()
         let dataRoot = state.dataRoot()
-        let candidates = ["/usr/bin/python3", "/opt/homebrew/bin/python3", root.appendingPathComponent(".venv/bin/python").path]
+        let candidates = [
+            root.appendingPathComponent(".venv/bin/python").path,
+            parentRoot.appendingPathComponent(".venv/bin/python").path,
+            "/opt/homebrew/bin/python3",
+            "/usr/bin/python3"
+        ]
         let python = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? "/usr/bin/python3"
         let transcriptDir = dataRoot.appendingPathComponent("results/app-transcripts")
         let approvalDir = dataRoot.appendingPathComponent("results/approvals")
@@ -25,22 +31,27 @@ enum HarnessBridge {
         var args = ["-m", "eliot_harness.cli", "--model-url", state.modelURL, "--model-name", state.modelName, "--task", task, "--approval", state.approvalMode, "--transcript", transcript, "--audit-log", dataRoot.appendingPathComponent("results/app-audit.jsonl").path]
         args += ["--approval-dir", approvalDir.path]
         args += ["--config", FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".config/opensiri-ai/config.json").path]
+        let inferred = inferredReadSources(for: task)
         if state.enableMemory || state.enableMemoryWrite { args.append("--enable-memory") }
         if state.enableMemoryWrite { args.append("--enable-memory-write") }
         if state.enableLocalIndex { args.append("--enable-local-index") }
-        if state.enableFiles { args.append("--enable-files") }
-        if state.enableFinder { args.append("--enable-finder") }
+        if state.enableFiles || inferred.contains("files") { args.append("--enable-files") }
+        if state.enableFinder || inferred.contains("finder") { args.append("--enable-finder") }
         if state.enableFinderWrite { args.append("--enable-finder-write") }
         if state.enableWeb { args.append("--enable-web") }
         if state.enableVisual { args.append("--enable-visual") }
-        if state.enableMail { args.append("--enable-mail") }
+        if state.enableMail || inferred.contains("mail") { args.append("--enable-mail") }
         if state.enableMailWrite { args.append("--enable-mail-write") }
-        if state.enableMessages { args.append("--enable-messages") }
+        if state.enableMessages || inferred.contains("messages") { args.append("--enable-messages") }
         if state.enableMessagesWrite { args.append("--enable-messages-write") }
+        if state.enableReminders || inferred.contains("reminders") { args.append("--enable-reminders") }
+        if state.enableRemindersWrite { args.append("--enable-reminders-write") }
+        if state.enableNotes || inferred.contains("notes") { args.append("--enable-notes") }
+        if state.enableNotesWrite { args.append("--enable-notes-write") }
         if state.enablePhotos { args.append("--enable-photos") }
-        if state.enableCalendar { args.append("--enable-calendar") }
-        if state.enableContacts { args.append("--enable-contacts") }
-        if state.enableBrowser { args.append("--enable-browser") }
+        if state.enableCalendar || inferred.contains("calendar") { args.append("--enable-calendar") }
+        if state.enableContacts || inferred.contains("contacts") { args.append("--enable-contacts") }
+        if state.enableBrowser || inferred.contains("browser") { args.append("--enable-browser") }
         if state.enableBrowserWrite { args.append("--enable-browser-write") }
         if state.enableSystem { args.append("--enable-system") }
         if state.enableSystemWrite { args.append("--enable-system-write") }
@@ -55,6 +66,7 @@ enum HarnessBridge {
         p.arguments = args
         var env = ProcessInfo.processInfo.environment
         env["PYTHONPATH"] = root.appendingPathComponent("src").path
+        if let key = Keychain.read(service: "opensiri-ai", account: "model-api-key") { env["OPENSIRI_MODEL_API_KEY"] = key }
         if !state.visionModelURL.isEmpty { env["OPENSIRI_VLM_URL"] = state.visionModelURL }
         if !state.visionModelName.isEmpty { env["OPENSIRI_VLM_MODEL"] = state.visionModelName }
         if !state.visionModelURL.isEmpty, env["OPENSIRI_VLM_API_KEY"] == nil, let key = Keychain.read(service: "opensiri-ai", account: "vision-api-key") { env["OPENSIRI_VLM_API_KEY"] = key }
@@ -93,9 +105,26 @@ enum HarnessBridge {
     }
 
     private static func sanitize(_ text: String) -> String {
+        if text.contains("Model server is not reachable") || text.contains("ConnectionRefusedError") || text.contains("urlopen error [Errno 61]") || text.contains("Connection refused") {
+            return "The local model server is not reachable. Check that the MLX server is running and that Settings > Model URL is set to http://127.0.0.1:8081."
+        }
         if text.contains("<tool_call") { return "I couldn't parse the model tool response. Try rephrasing or use an explicit backend tool." }
         if text.contains("blocked-by-guard") { return "Blocked by the safety guard." }
         if text.contains("blocked-by-policy") { return "Blocked by permission policy." }
         return text
+    }
+
+    private static func inferredReadSources(for task: String) -> Set<String> {
+        let t = task.lowercased()
+        var out = Set<String>()
+        if ["file", "pdf", "paper", "document", "spreadsheet", "receipt", "folder", "finder"].contains(where: { t.contains($0) }) { out.formUnion(["files", "finder"]) }
+        if ["mail", "email", "inbox"].contains(where: { t.contains($0) }) { out.insert("mail") }
+        if ["message", "imessage", "text from", "sms"].contains(where: { t.contains($0) }) { out.insert("messages") }
+        if ["reminder", "todo", "to-do"].contains(where: { t.contains($0) }) { out.insert("reminders") }
+        if ["note", "notes"].contains(where: { t.contains($0) }) { out.insert("notes") }
+        if ["calendar", "meeting", "free at", "busy", "event"].contains(where: { t.contains($0) }) { out.insert("calendar") }
+        if ["contact", "phone", "email address"].contains(where: { t.contains($0) }) { out.insert("contacts") }
+        if ["chrome", "safari", "browser", "youtube", "tab", "history"].contains(where: { t.contains($0) }) { out.insert("browser") }
+        return out
     }
 }

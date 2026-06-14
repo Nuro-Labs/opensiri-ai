@@ -48,6 +48,12 @@ class PolicyEngine:
         if action.name == "memory_save":
             if not self.permissions.can_write(Source.HYPERSAVE):
                 return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "memory write requires approval", PermissionTier.MUTATE_LOCAL, guard)
+        if action.name == "read_file":
+            if not self.permissions.can_read(Source.FILES):
+                return PolicyResult(PolicyDecision.DENY, "file read is not enabled", PermissionTier.READ_LOCAL, guard)
+        if action.name == "write_file":
+            if not self.permissions.can_write(Source.FILES):
+                return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "file write requires approval", PermissionTier.MUTATE_LOCAL, guard)
         if action.name in ("mail_send", "message_send"):
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, "external send requires explicit approval", PermissionTier.EXTERNAL, guard)
         if action.name == "mail_action" and str(action.args.get("action", "")) in ("flag_selected", "unread_selected", "archive_selected"):

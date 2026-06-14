@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from .hypersave import HypersaveClient
 from .local_index import LocalIndex
@@ -25,15 +27,19 @@ class ContextBundle:
 
 
 class ContextCompiler:
-    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None, registry: ConnectorRegistry | None = None, local_index: LocalIndex | None = None):
+    def __init__(self, permissions: PermissionState, memory: HypersaveClient | None = None, registry: ConnectorRegistry | None = None, local_index: LocalIndex | None = None, transcript_path: str | None = None):
         self.permissions = permissions
         self.memory = memory
         self.registry = registry
         self.local_index = local_index
+        self.transcript_path = transcript_path
 
     def compile(self, task: str) -> ContextBundle:
         bundle = ContextBundle()
         bundle.permission_lines.extend(self._permission_summary())
+        prev_ctx = self._load_previous_transcript_context(task)
+        if prev_ctx:
+            bundle.memory_lines.append(prev_ctx)
         if self.memory and self.permissions.can_read(Source.HYPERSAVE):
             bundle.memory_lines.extend(self._memory_for_task(task))
         if self.local_index:
@@ -43,6 +49,30 @@ class ContextCompiler:
                 if item.text and "undefined" not in item.text.lower():
                     bundle.memory_lines.append(item.text[:300])
         return bundle
+
+    def _load_previous_transcript_context(self, current_task: str) -> str | None:
+        if not self.transcript_path:
+            return None
+        import os
+        p = Path(self.transcript_path)
+        if not p.exists() or os.path.getsize(p) == 0:
+            return None
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            prev_task = data.get("task")
+            if not prev_task or prev_task == current_task:
+                return None
+            turns = data.get("turns", [])
+            if not turns:
+                return None
+            last_turn = turns[-1]
+            last_result = last_turn.get("result") or ""
+            if not last_result:
+                return None
+            return f"RECENT CHAT HISTORY:\n- User previous request: \"{prev_task}\"\n- Assistant previous final response: \"{last_result[:800]}\""
+        except Exception:
+            return None
 
     def _index_for_task(self, task: str) -> list[str]:
         try:

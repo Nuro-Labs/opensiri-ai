@@ -8,6 +8,7 @@ dependencies = []
 [project.scripts]
 eliot-harness = "eliot_harness.cli:main"
 opensiri-index = "eliot_harness.indexer:main"
+opensiri-gateway = "eliot_harness.server:main"
 
 [project.optional-dependencies]
 mac = ["pyobjc-framework-ApplicationServices", "pyobjc-framework-Cocoa"]

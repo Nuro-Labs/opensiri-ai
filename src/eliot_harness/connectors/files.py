@@ -14,7 +14,7 @@ class FilesConnector(Connector):
     name = "files"
 
     def __init__(self, roots: list[str] | None = None):
-        default_roots = [Path.home() / "Documents", Path.home() / "Desktop", Path.home() / "Downloads", Path(os.getcwd())]
+        default_roots = [Path.home() / "Documents", Path.home() / "Desktop", Path.home() / "Downloads", Path(os.getcwd()), Path("/tmp")]
         self.roots = [Path(r).expanduser().resolve() for r in (roots or [str(p) for p in default_roots if p.exists()])]
 
     def read_context(self, task: str) -> list[ConnectorResult]:
@@ -69,6 +69,17 @@ end tell'''
             return ConnectorResult("error: file not allowed or not found", {"path": str(p)})
         text = self.extract_text(p, max_chars=max_chars)
         return ConnectorResult(text or "error: no extractable text", {"path": str(p)})
+
+    def write_file(self, path: str, content: str) -> ConnectorResult:
+        p = Path(path).expanduser().resolve()
+        if not self.is_allowed(str(p)):
+            return ConnectorResult("error: file destination path not allowed", {"path": str(p)})
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content, encoding="utf-8")
+            return ConnectorResult(f"successfully wrote to {p.name}", {"path": str(p)})
+        except Exception as e:
+            return ConnectorResult(f"error writing file: {e}", {"path": str(p)})
 
     def compare_files(self, paths: list[str], max_chars_each: int = 5000) -> ConnectorResult:
         chunks = []

@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from dataclasses import dataclass
 
+from .process import run_command_robust
+
 from .connectors.files import FilesConnector
 from .connectors.finder import FinderConnector
 from .connectors.browser import BrowserConnector
@@ -60,6 +62,7 @@ class Executor:
         self.shortcuts = ShortcutsConnector()
         if permissions:
             self.files.can_read = permissions.can_read(Source.FILES)
+            self.files.can_write = permissions.can_write(Source.FILES)
             self.finder.can_read = permissions.can_read(Source.FINDER)
             self.finder.can_write = permissions.can_write(Source.FINDER)
             self.mail.can_read = permissions.can_read(Source.MAIL)
@@ -81,13 +84,30 @@ class Executor:
             return ExecutionResult(str(args.get("summary", "done")), terminal=True)
         if name == "ask_user":
             return ExecutionResult(f"user approval requested: {args.get('question', '')}")
+        if name == "applescript":
+            script = str(args.get("script", ""))
+            from .connectors.applescript import run_osa
+            return ExecutionResult(run_osa(script))
+        if name == "read_file":
+            path = str(args.get("path", ""))
+            return ExecutionResult(self.files.read_file(path).text)
+        if name == "write_file":
+            path = str(args.get("path", ""))
+            content = str(args.get("content", ""))
+            if not self.files.can_write:
+                return ExecutionResult("error: file write permission not enabled")
+            return ExecutionResult(self.files.write_file(path, content).text)
         if name == "open_app":
             return ExecutionResult(mac_ax.open_app(str(args.get("name", ""))))
         if name == "run_shell":
             cmd = str(args.get("cmd", ""))
-            r = subprocess.run(["/bin/zsh", "-c", cmd], capture_output=True, text=True, timeout=self.shell_timeout)
-            out = (r.stdout + r.stderr).strip()
-            return ExecutionResult(out[:2000] if out else ("" if r.returncode == 0 else f"error: exit {r.returncode}"))
+            res = run_command_robust(["/bin/zsh", "-c", cmd], timeout=self.shell_timeout)
+            if res.timed_out:
+                return ExecutionResult(f"error: command timed out after {self.shell_timeout} seconds")
+            if res.error:
+                return ExecutionResult(f"error: {res.error}")
+            out = (res.stdout + res.stderr).strip()
+            return ExecutionResult(out[:2000] if out else ("" if res.returncode == 0 else f"error: exit {res.returncode}"))
         if name == "memory_search":
             if not self.memory:
                 return ExecutionResult("memory unavailable")
@@ -117,7 +137,11 @@ class Executor:
         if name == "file_analyze":
             return ExecutionResult(self._file_analyze(str(args.get("query", "")), str(args.get("question", "What is this file about?")), str(args.get("path", ""))), terminal=True)
         if name == "reminders_list":
-            return ExecutionResult(self._reminders_list(int(args.get("limit", 20))), terminal=True)
+            return ExecutionResult(self._reminders_list(int(args.get("limit", 20))), terminal=False)
+        if name == "reminders_create":
+            return ExecutionResult(self.reminders.add_reminder(str(args.get("text", "")), dry_run=not self.reminders.can_write).text, terminal=False)
+        if name == "reminders_complete":
+            return ExecutionResult(self.reminders.complete_reminder(str(args.get("text", "")), dry_run=not self.reminders.can_write).text, terminal=False)
         if name == "calendar_free_busy":
             return ExecutionResult(self.calendar.free_busy(args.get("day"), args.get("time_text")).text, terminal=True)
         if name == "contacts_resolve":
@@ -219,7 +243,22 @@ class Executor:
         analysis = AnalysisModelClient().analyze(question, text)
         if analysis:
             return f"{target.name}\nPath: {target}\n\n{analysis}"
-        return f"{target.name}\nPath: {target}\n\n{text[:1800]}"
+        return f"{target.name}\nPath: {target}\n\n{self._extractive_file_summary(text)}"
+
+    def _extractive_file_summary(self, text: str) -> str:
+        import re
+        clean = re.sub(r"\s+", " ", text).strip()
+        title = clean[:180]
+        abstract = ""
+        m = re.search(r"abstract\s+(.*?)(?:\s+1\s+introduction|\s+introduction\s+|$)", clean, re.I)
+        if m:
+            abstract = m.group(1).strip()
+        body = abstract or clean
+        sentences = re.split(r"(?<=[.!?])\s+", body)
+        bullets = [s.strip() for s in sentences if len(s.strip()) > 40][:5]
+        if not bullets:
+            bullets = [body[:800]]
+        return "This document appears to be about:\n" + "\n".join(f"- {b}" for b in bullets) + (f"\n\nTitle/snippet: {title}" if title else "")
 
     def _reminders_list(self, limit: int) -> str:
         if not self.reminders.can_read:
@@ -484,8 +523,12 @@ class Executor:
             osa = 'tell application "Calendar" to tell calendar 1 to make new event with properties {summary:' + title + ', start date:(current date), end date:(current date) + 3600}'
         if osa is None:
             return f"error: unsupported intent {app}/{intent}"
-        r = subprocess.run(["osascript", "-e", osa], capture_output=True, text=True, timeout=30)
-        return "ok" + ((": " + r.stdout.strip()[:300]) if r.stdout.strip() else "") if r.returncode == 0 else "error: " + r.stderr.strip()[:300]
+        res = run_command_robust(["osascript", "-e", osa], timeout=30)
+        if res.timed_out:
+            return "error: osascript timed out after 30 seconds"
+        if res.error:
+            return f"error: {res.error}"
+        return "ok" + ((": " + res.stdout.strip()[:300]) if res.stdout.strip() else "") if res.returncode == 0 else "error: " + res.stderr.strip()[:300]
 
 
 def _q(value) -> str:

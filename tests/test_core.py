@@ -30,7 +30,7 @@ def test_audit_redacts_secret():
 
 
 def test_normalize_action_rejects_unknown():
-    assert normalize_action({"name": "open_app", "args": {"name": "Notes"}}).name == "open_app"
+    assert normalize_action({"name": "applescript", "args": {"script": "tell app \"Notes\" to activate"}}).name == "applescript"
     assert normalize_action({"name": "bad", "args": {}}) is None
 
 
@@ -92,8 +92,8 @@ def test_mac_tool_dispatch_catalog_list():
 
 def test_model_parse_action_structured():
     client = EliotModelClient()
-    msg = {"tool_calls": [{"function": {"name": "open_app", "arguments": '{"name":"Notes"}'}}]}
-    assert client._parse_action(msg).args["name"] == "Notes"
+    msg = {"tool_calls": [{"function": {"name": "applescript", "arguments": '{"script":"tell app \\"Notes\\" to activate"}'}}]}
+    assert client._parse_action(msg).args["script"] == 'tell app "Notes" to activate'
 
 
 def test_model_repairs_natural_final_answer():
@@ -114,16 +114,17 @@ def test_memory_connector_handles_missing_client():
     assert c.save("x", "test") == "memory unavailable"
 
 
-def test_policy_denies_memory_without_permission():
+def test_policy_denies_file_read_without_permission():
     engine = PolicyEngine(PermissionState())
-    result = engine.evaluate(normalize_action({"name": "memory_ask", "args": {"query": "x"}}))
+    result = engine.evaluate(normalize_action({"name": "read_file", "args": {"path": "/tmp/a.txt"}}))
     assert result.decision == PolicyDecision.DENY
 
 
-def test_policy_requires_approval_for_delete():
-    engine = PolicyEngine(PermissionState())
-    result = engine.evaluate(normalize_action({"name": "run_shell", "args": {"cmd": "rm /tmp/x"}}))
-    assert result.decision == PolicyDecision.REQUIRE_APPROVAL
+def test_policy_allows_file_read_with_permission():
+    from eliot_harness.permissions import Source
+    engine = PolicyEngine(PermissionState(read_sources={Source.FILES}))
+    result = engine.evaluate(normalize_action({"name": "read_file", "args": {"path": "/tmp/a.txt"}}))
+    assert result.decision == PolicyDecision.ALLOW
 
 
 def test_file_approval_times_out(tmp_path):
@@ -277,3 +278,48 @@ def test_indexer_unsupported_source():
     from eliot_harness.indexer import unsupported_source
     item = unsupported_source("unknown")
     assert item.source == "unknown" and "not implemented" in item.content
+
+
+def test_harness_runtime_ask_user_blocks(tmp_path):
+    from eliot_harness.runtime import HarnessRuntime
+    from eliot_harness.context import ContextCompiler
+    from eliot_harness.executor import Executor
+    from eliot_harness.permissions import PermissionState
+    from eliot_harness.approval import ApprovalProvider, ApprovalDecision
+    from eliot_harness.schema import Action
+    from eliot_harness.model import ModelResult
+
+    class MockModelClient:
+        def __init__(self):
+            self.calls = 0
+        def complete(self, messages, max_tokens=384):
+            self.calls += 1
+            if self.calls == 1:
+                return ModelResult(Action("ask_user", {"question": "Should I mark all reminders as done?"}), 0.05, {})
+            else:
+                return ModelResult(Action("done", {"summary": "Reminders completed"}), 0.05, {})
+
+    class MockApprovalProvider(ApprovalProvider):
+        def __init__(self):
+            self.approve_called = False
+        def approve(self, action, verdict):
+            self.approve_called = True
+            return ApprovalDecision(True, "user allowed")
+
+    model = MockModelClient()
+    context = ContextCompiler(PermissionState())
+    executor = Executor()
+    approval = MockApprovalProvider()
+
+    runtime = HarnessRuntime(
+        model=model,
+        context=context,
+        executor=executor,
+        approval=approval,
+        audit_path=str(tmp_path / "audit.jsonl")
+    )
+
+    transcript = runtime.run("mark all reminders as done")
+    assert approval.approve_called
+    assert model.calls == 2
+    assert "Reminders completed" in transcript.turns[-1]["result"]

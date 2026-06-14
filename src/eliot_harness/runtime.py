@@ -14,10 +14,9 @@ from .guard import Verdict, classify
 from .model import EliotModelClient
 from .policy import PolicyDecision, PolicyEngine
 from .prompt import ELIOT_SYSTEM
-from .schema import make_observation
+from .schema import Action, make_observation
 from .transcript import Transcript
 from . import mac_ax
-from .writing import draft_from_context, is_draft_only_task
 from .session import SessionState
 from .session_store import save_session
 
@@ -34,16 +33,6 @@ class HarnessRuntime:
     def run(self, task: str, app: str = "Desktop", ui_tree: str = 'AXDesktop "Desktop" id=1', max_turns: int = 12, transcript_path: str | None = None, live_ax: bool = False) -> Transcript:
         transcript = Transcript(task=task)
         session = SessionState(task=task)
-        pre_context = self.context.compile(task).render()
-        if is_draft_only_task(task):
-            result = draft_from_context(task, pre_context)
-            session.references.add("draft", "latest draft", result)
-            rec = {"turn": 0, "obs": "draft-only harness skill", "action": {"name": "draft_only", "args": {}}, "latency_s": 0.0, "result": result}
-            transcript.add(rec)
-            append_audit(self.audit_path, {"event": "draft_only", "record": rec})
-            if transcript_path:
-                transcript.write(Path(transcript_path))
-            return transcript
         messages: list[dict[str, Any]] = [{"role": "system", "content": ELIOT_SYSTEM}]
         result = "none"
         target_app: str | None = None
@@ -67,12 +56,15 @@ class HarnessRuntime:
                 append_audit(self.audit_path, {"event": "unparseable", "record": rec})
                 break
             raw_tool_calls = model_result.raw.get("tool_calls") or []
+            assist_content = (model_result.raw.get("content") or "").strip()
+            if not assist_content:
+                assist_content = (model_result.raw.get("reasoning") or model_result.raw.get("thought") or "").strip()
             if raw_tool_calls:
                 last_tool_call_id = raw_tool_calls[0].get("id") or f"call_{turn}"
-                messages.append({"role": "assistant", "content": model_result.raw.get("content") or "", "tool_calls": raw_tool_calls})
+                messages.append({"role": "assistant", "content": assist_content, "tool_calls": raw_tool_calls})
             else:
                 last_tool_call_id = f"call_{turn}"
-                messages.append({"role": "assistant", "content": "", "tool_calls": [{"type": "function", "id": last_tool_call_id, "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
+                messages.append({"role": "assistant", "content": assist_content, "tool_calls": [{"type": "function", "id": last_tool_call_id, "function": {"name": action.name, "arguments": json.dumps(action.args)}}]})
             policy = self.policy.evaluate(action, obs)
             verdict = policy.guard
             rec["policy"] = {"decision": policy.decision.value, "reason": policy.reason, "tier": policy.tier.value}
@@ -92,7 +84,7 @@ class HarnessRuntime:
                     append_audit(self.audit_path, {"event": "guard_block", "record": rec})
                     result = 'user: "No — blocked by safety guard."'
                     continue
-            if action.name == "ask_user" and self._requires_app_confirmation(str(action.args.get("question", ""))):
+            if action.name == "ask_user":
                 decision = self.approval.approve(action, Verdict(True, str(action.args.get("question", "approval requested")), "external"))
                 rec["approval"] = decision.__dict__
                 if not decision.approved:
@@ -123,8 +115,3 @@ class HarnessRuntime:
             transcript.write(Path(transcript_path))
         save_session(session)
         return transcript
-
-    @staticmethod
-    def _requires_app_confirmation(question: str) -> bool:
-        q = question.lower()
-        return any(x in q for x in ("delete", "remove", "send", "archive", "trash", "approve", "confirm", "unsubscribe", "close tab", "lock", "sleep"))

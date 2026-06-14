@@ -23,7 +23,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", default=None)
     ap.add_argument("--list-mac-tools", action="store_true")
-    ap.add_argument("--model-url", default="http://localhost:8081")
+    ap.add_argument("--model-url", default="http://127.0.0.1:8081")
     ap.add_argument("--model-name", default="default_model")
     ap.add_argument("--transcript", default="results/transcript.json")
     ap.add_argument("--audit-log", default="results/audit.jsonl")
@@ -151,12 +151,16 @@ def main() -> None:
     approval = {"deny": DenyAllApproval(), "console": ConsoleApproval(), "app": FileApproval(args.approval_dir), "yes": AutoApprove()}[args.approval]
     runtime = HarnessRuntime(
         model=EliotModelClient(args.model_url, args.model_name),
-        context=ContextCompiler(perms, memory_client, registry, local_index),
+        context=ContextCompiler(perms, memory_client, registry, local_index, transcript_path=args.transcript),
         executor=Executor(memory, web=WebConnector(enabled=cfg.network_enabled), permissions=perms, local_index=local_index, file_roots=args.files_root or None),
         approval=approval,
         audit_path=args.audit_log,
     )
-    tr = runtime.run(args.task, transcript_path=args.transcript, live_ax=args.live_ax)
+    try:
+        tr = runtime.run(args.task, transcript_path=args.transcript, live_ax=args.live_ax)
+    except RuntimeError as exc:
+        print(f"ERROR: {exc}")
+        raise SystemExit(1) from None
     print(tr.turns[-1]["result"] if tr.turns else "no result")
 
 

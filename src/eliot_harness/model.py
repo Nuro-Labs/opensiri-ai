@@ -6,14 +6,15 @@ import json
 import os
 import re
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
 from .schema import Action, OPENAI_TOOLS, normalize_action
 
-TC_RE = re.compile(r"<tool_call>\n?<function=([^>]+)>\n(.*?)</function>\n?</tool_call>", re.S)
-PARAM_RE = re.compile(r"<parameter=([^>]+)>\n(.*?)\n</parameter>", re.S)
+TC_RE = re.compile(r"<tool_call>\s*<function=([^>]+)>\s*(.*?)\s*</function>\s*</tool_call>", re.S)
+PARAM_RE = re.compile(r"<parameter=([^>]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
 @dataclass
@@ -24,7 +25,7 @@ class ModelResult:
 
 
 class EliotModelClient:
-    def __init__(self, base_url: str = "http://localhost:8081", model: str = "default_model", thinking: bool = False, api_key: str | None = None, auth_header: str | None = None):
+    def __init__(self, base_url: str = "http://127.0.0.1:8081", model: str = "default_model", thinking: bool = False, api_key: str | None = None, auth_header: str | None = None):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.thinking = thinking
@@ -32,7 +33,7 @@ class EliotModelClient:
         self.auth_header = auth_header or os.environ.get("OPENSIRI_MODEL_AUTH_HEADER") or "api-key"
 
     def chat_url(self) -> str:
-        if self.base_url.endswith("/chat/completions"):
+        if "/chat/completions" in self.base_url:
             return self.base_url
         return self.base_url + "/v1/chat/completions"
 
@@ -51,8 +52,11 @@ class EliotModelClient:
             headers[self.auth_header] = self.api_key if self.auth_header.lower() != "authorization" else "Bearer " + self.api_key
         req = urllib.request.Request(self.chat_url(), data=json.dumps(body).encode(), headers=headers)
         t0 = time.time()
-        with urllib.request.urlopen(req, timeout=600) as r:
-            msg = json.load(r)["choices"][0]["message"]
+        try:
+            with urllib.request.urlopen(req, timeout=600) as r:
+                msg = json.load(r)["choices"][0]["message"]
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"Model server is not reachable at {self.base_url}. Start the MLX server or check --model-url.") from exc
         return ModelResult(action=self._parse_action(msg), latency_s=time.time() - t0, raw=msg)
 
     def _parse_action(self, msg: dict[str, Any]) -> Action | None:
@@ -64,15 +68,22 @@ class EliotModelClient:
                 try:
                     args = json.loads(args)
                 except json.JSONDecodeError:
+                    with open("/tmp/opensiri_debug.log", "a") as f:
+                        f.write(f"JSONDecodeError on arguments: {args!r} | Full msg: {json.dumps(msg)}\n")
                     return None
             return normalize_action({"name": fn.get("name"), "args": args})
-        content = msg.get("content") or ""
+        content = (msg.get("content") or "").strip()
+        if not content:
+            content = (msg.get("reasoning") or msg.get("thought") or "").strip()
         m = TC_RE.search(content)
         if not m:
-            content = content.strip()
             if "<tool_call" in content:
+                with open("/tmp/opensiri_debug.log", "a") as f:
+                    f.write(f"TC_RE mismatch but <tool_call present: {content!r} | Full msg: {json.dumps(msg)}\n")
                 return None
             if content:
                 return normalize_action({"name": "done", "args": {"summary": content}})
+            with open("/tmp/opensiri_debug.log", "a") as f:
+                f.write(f"No content and no tool calls | Full msg: {json.dumps(msg)}\n")
             return None
         return normalize_action({"name": m.group(1), "args": {pm.group(1): pm.group(2) for pm in PARAM_RE.finditer(m.group(2))}})

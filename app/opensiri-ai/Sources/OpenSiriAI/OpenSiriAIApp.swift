@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct OpenSiriAIApp: App {
-    @StateObject private var state = AppState()
+    @State private var state = AppState()
 
     init() {
         HotKeyManager.shared.register()
@@ -10,11 +10,15 @@ struct OpenSiriAIApp: App {
 
     var body: some Scene {
         WindowGroup("opensiri-ai") {
-            PaletteView().environmentObject(state)
+            PaletteView()
+                .environment(state)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
-        Settings { SettingsView().environmentObject(state) }
+        Settings {
+            SettingsView()
+                .environment(state)
+        }
     }
 }
 

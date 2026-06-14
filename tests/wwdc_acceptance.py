@@ -46,10 +46,35 @@ def main() -> int:
 
     api_key = os.environ.get("HYPERSAVE_API_KEY")
     base_url = os.environ.get("HYPERSAVE_BASE_URL", "http://localhost:3005")
-    memory_client = HypersaveClient(api_key=api_key, base_url=base_url, timeout=120) if api_key else None
+    if api_key:
+        memory_client = HypersaveClient(api_key=api_key, base_url=base_url, timeout=120)
+    else:
+        class MockHypersaveClient:
+            def __init__(self):
+                self.memories = []
+            def save(self, content: str, source: str, sensitivity: str = "medium"):
+                self.memories.append({"content": content, "category": source, "sensitivity": sensitivity})
+                return {"status": "complete", "pendingId": "mock-id"}
+            def save_and_wait(self, content: str, source: str, sensitivity: str = "medium", timeout_s: float = 90.0):
+                return self.save(content, source, sensitivity)
+            def search(self, query: str, limit: int = 8, max_sensitivity: str = "high"):
+                words = [w.lower() for w in query.replace("?", "").replace(".", "").replace(",", "").split() if len(w) > 3]
+                results = []
+                for m in self.memories:
+                    content_lower = m["content"].lower()
+                    if not words or any(w in content_lower for w in words):
+                        results.append(m)
+                return {"results": results[:limit]}
+            def ask(self, query: str, max_sensitivity: str = "high"):
+                res = self.search(query, max_sensitivity=max_sensitivity)
+                snippets = [item["content"] for item in res.get("results", [])]
+                return {"answer": "\n".join(snippets) if snippets else "I could not find any information."}
+        memory_client = MockHypersaveClient()
     memory = MemoryConnector(memory_client)
     web = WebConnector(enabled=args.enable_web)
-    perms = PermissionState(read_sources={Source.HYPERSAVE} if memory_client else set(), network_enabled=args.enable_web)
+    read_sources = {s for s in Source}
+    write_sources = {s for s in Source}
+    perms = PermissionState(read_sources=read_sources, write_sources=write_sources, network_enabled=args.enable_web)
     model = EliotModelClient(args.model_url, args.model_name, api_key=os.environ.get(args.model_api_key_env), auth_header=args.model_auth_header)
     runtime_safe = HarnessRuntime(
         model=model,

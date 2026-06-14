@@ -19,7 +19,7 @@ class SourceConfig:
 
 @dataclass
 class HarnessConfig:
-    model_url: str = "http://localhost:8081"
+    model_url: str = "http://127.0.0.1:8081"
     model_name: str = "default_model"
     audit_path: str = "~/.local/share/opensiri-ai/audit.jsonl"
     transcript_dir: str = "~/.local/share/opensiri-ai/transcripts"
