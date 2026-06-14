@@ -4,16 +4,7 @@ import SwiftUI
 struct FloatingWindowConfigurator: NSViewRepresentable {
     let expanded: Bool
 
-    class Coordinator: NSObject {
-        var lastExpandedState: Bool? = nil
-        var resignObserver: Any? = nil
-
-        deinit {
-            if let obs = resignObserver {
-                NotificationCenter.default.removeObserver(obs)
-            }
-        }
-    }
+    class Coordinator: NSObject { var lastExpandedState: Bool? = nil }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -36,31 +27,20 @@ struct FloatingWindowConfigurator: NSViewRepresentable {
     }
 
     private func configureWindow(_ window: NSWindow, coordinator: Coordinator) {
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.styleMask.insert(.fullSizeContentView)
-        window.isMovableByWindowBackground = true
-        window.backgroundColor = .clear
-        window.isOpaque = false
+        window.title = "OpenSiri"
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.styleMask.remove(.fullSizeContentView)
+        window.isMovableByWindowBackground = false
+        window.backgroundColor = NSColor.windowBackgroundColor
+        window.isOpaque = true
         window.hasShadow = true
         window.level = .floating
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         window.standardWindowButton(.closeButton)?.isHidden = false
         window.standardWindowButton(.miniaturizeButton)?.isHidden = false
         window.standardWindowButton(.zoomButton)?.isHidden = false
         window.makeKeyAndOrderFront(nil)
-
-        if coordinator.resignObserver == nil {
-            coordinator.resignObserver = NotificationCenter.default.addObserver(
-                forName: NSApplication.didResignActiveNotification,
-                object: nil,
-                queue: .main
-            ) { [weak window] _ in
-                DispatchQueue.main.async {
-                    window?.orderOut(nil)
-                }
-            }
-        }
 
         // Only transition size when expanded state actually shifts
         if coordinator.lastExpandedState != expanded {
