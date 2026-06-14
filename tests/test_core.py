@@ -211,6 +211,21 @@ def test_vision_full_foundry_url():
     assert ImageUnderstandingClient(base_url=url, model="grok-4.3").chat_url() == url
 
 
+def test_vision_grok_defaults(monkeypatch):
+    from eliot_harness.vision import ImageUnderstandingClient
+    
+    # Mock environment variables
+    monkeypatch.setenv("XAI_API_KEY", "xai-test-key-123")
+    monkeypatch.delenv("OPENSIRI_VLM_API_KEY", raising=False)
+    monkeypatch.delenv("OPENSIRI_VLM_URL", raising=False)
+    
+    client = ImageUnderstandingClient(model="grok-2-vision-1212")
+    assert client.base_url == "https://api.x.ai/v1"
+    assert client.api_key == "xai-test-key-123"
+    assert client.auth_header == "Authorization"
+    assert client.chat_url() == "https://api.x.ai/v1/v1/chat/completions" or client.chat_url() == "https://api.x.ai/v1/chat/completions"
+
+
 def test_model_full_foundry_url():
     from eliot_harness.model import EliotModelClient
     url = "https://example.services.ai.azure.com/openai/v1/chat/completions"

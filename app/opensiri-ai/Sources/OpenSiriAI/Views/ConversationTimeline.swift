@@ -10,23 +10,32 @@ struct ConversationTimeline: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 14) {
-                    if state.isRunning {
-                        WorkingRow(status: state.status)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
-                    if let request = state.approvalRequest {
-                        ApprovalCard(request: request, approve: approveRequest, deny: denyRequest)
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
                     ForEach(state.messages) { msg in
                         MessageBubble(message: msg)
                             .id(msg.id)
                             .transition(.asymmetric(insertion: .move(edge: msg.role == .user ? .trailing : .leading).combined(with: .opacity), removal: .opacity))
                     }
-                    if state.showTechnicalLog && !state.technicalLog.isEmpty {
-                        LatestResultCard(text: state.technicalLog)
+                    
+                    if let request = state.approvalRequest {
+                        ContentMessageBubble(message: ChatMessage(role: .assistant, text: "Approval Required")) {
+                            ApprovalCard(request: request, approve: approveRequest, deny: denyRequest)
+                        }
+                        .id("approval_request")
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else if state.isRunning {
+                        WorkingRow(status: state.status)
+                            .id("working_row")
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
+                    
+                    if state.showTechnicalLog && !state.technicalLog.isEmpty {
+                        LatestResultCard(text: state.technicalLog)
+                            .id("technical_log")
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    
+                    Spacer(minLength: 0)
+                        .id("bottom_anchor")
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
@@ -36,15 +45,104 @@ struct ConversationTimeline: View {
             .animation(Theme.fastSpring, value: state.isRunning)
             .animation(Theme.siriSpring, value: state.approvalRequest?.id)
             .onChange(of: state.messages.count) { _, _ in
-                if let last = state.messages.last {
+                withAnimation(Theme.fluidSpring) {
+                    proxy.scrollTo("bottom_anchor", anchor: .bottom)
+                }
+            }
+            .onChange(of: state.approvalRequest?.id) { _, id in
+                if id != nil {
                     withAnimation(Theme.fluidSpring) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
+                        proxy.scrollTo("bottom_anchor", anchor: .bottom)
                     }
+                }
+            }
+            .onChange(of: state.isRunning) { _, running in
+                if running {
+                    withAnimation(Theme.fluidSpring) {
+                        proxy.scrollTo("bottom_anchor", anchor: .bottom)
+                    }
+                }
+            }
+            .onAppear {
+                withAnimation(Theme.fluidSpring) {
+                    proxy.scrollTo("bottom_anchor", anchor: .bottom)
                 }
             }
         }
     }
 }
+
+struct ContentMessageBubble<Content: View>: View {
+    let message: ChatMessage
+    let content: Content
+
+    init(message: ChatMessage, @ViewBuilder content: () -> Content) {
+        self.message = message
+        self.content = content()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            if message.role == .user { Spacer(minLength: 92) }
+
+            if message.role != .user {
+                RoleBadge(role: message.role)
+            }
+
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(spacing: 8) {
+                    Text(label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(message.date.formatted(date: .omitted, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+
+                content
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(bubbleBackground)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            if message.role == .user {
+                RoleBadge(role: message.role)
+            } else {
+                Spacer(minLength: 92)
+            }
+        }
+    }
+
+    private var label: String {
+        switch message.role {
+        case .user: return "You"
+        case .assistant: return "OpenSiri"
+        case .system: return "Status"
+        }
+    }
+
+    private var bubbleBackground: Color {
+        switch message.role {
+        case .user: return Color.accentColor.opacity(0.13)
+        case .assistant: return Color(nsColor: .controlBackgroundColor).opacity(0.74)
+        case .system: return Color.blue.opacity(0.06)
+        }
+    }
+
+    private var borderColor: Color {
+        switch message.role {
+        case .user: return Color.accentColor.opacity(0.18)
+        case .assistant: return Color.white.opacity(0.22)
+        case .system: return Color.blue.opacity(0.12)
+        }
+    }
+}
+
 
 struct WorkingRow: View {
     let status: String
@@ -828,16 +926,20 @@ struct ApprovalCard: View {
     let request: ApprovalRequest
     let approve: () -> Void
     let deny: () -> Void
+    
+    @State private var hovering = false
+    @State private var hoveringApprove = false
+    @State private var hoveringDeny = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.orange.opacity(0.16))
+                        .fill(Theme.amberWarning.opacity(0.16))
                     Image(systemName: "hand.raised.fill")
                         .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.amberWarning)
                 }
                 .frame(width: 42, height: 42)
 
@@ -868,21 +970,41 @@ struct ApprovalCard: View {
                 }
             }
 
-            HStack(spacing: 10) {
-                Button("Deny", role: .cancel, action: deny)
-                Button("Approve", action: approve)
-                    .buttonStyle(.borderedProminent)
-                Spacer(minLength: 0)
+            HStack(spacing: 12) {
+                Button(role: .cancel, action: deny) {
+                    Label("Deny", systemImage: "xmark.circle")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(hoveringDeny ? .white : Theme.neonPink)
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.neonPink)
+                .controlSize(.small)
+                .onHover { hoveringDeny = $0 }
+
+                Button(action: approve) {
+                    Label("Approve", systemImage: "checkmark.circle.fill")
+                        .font(.caption.weight(.bold))
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.brightEmerald)
+                .controlSize(.small)
+                .onHover { hoveringApprove = $0 }
+
+                Spacer()
             }
+            .padding(.top, 4)
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.10))
+        .background(Theme.amberWarning.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.orange.opacity(0.22), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(hovering ? Theme.amberWarning.opacity(0.4) : Theme.amberWarning.opacity(0.16), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .scaleEffect(hovering ? 1.01 : 1.0)
+        .onHover { hovering = $0 }
+        .animation(.smooth(duration: 0.15), value: hovering)
     }
 }
 

@@ -94,7 +94,9 @@ To stay perfectly aligned with Apple's latest **Siri AI (WWDC 2026)** paradigm, 
 
 ## ⚖️ Comparison: OpenSiri-AI vs. Siri AI
 
-Yes, **OpenSiri-AI** is designed to replicate Siri AI's core personal intelligence capabilities, with the exception of the upcoming roadmap items (such as Visual Camera OCR and Spatial visionOS Coordination). However, OpenSiri-AI offers several critical architectural advantages that make it superior for power users, developers, and privacy-conscious users:
+Yes, **OpenSiri-AI** is designed to replicate Siri AI's core personal intelligence capabilities, with the exception of the upcoming roadmap items (such as Visual Camera OCR and Spatial visionOS Coordination). For a complete, feature-by-feature parity checklist, deep architectural comparison, and upcoming roadmap feature details from Addendum A, refer to the full [Siri AI Parity and Comparison Guide](file:///Users/akhilponnada/Downloads/elliot/eliot-harness/docs/siri_ai_comparison.md).
+
+OpenSiri-AI offers several critical architectural advantages that make it superior for power users, developers, and privacy-conscious users:
 
 ### Where OpenSiri-AI is Better
 

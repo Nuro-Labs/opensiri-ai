@@ -19,10 +19,27 @@ class ImageUnderstandingClient:
     """
 
     def __init__(self, base_url: str | None = None, model: str | None = None, api_key: str | None = None, auth_header: str | None = None, timeout: float = 90.0):
-        self.base_url = (base_url if base_url is not None else os.environ.get("OPENSIRI_VLM_URL", "")).rstrip("/")
-        self.model = model if model is not None else os.environ.get("OPENSIRI_VLM_MODEL", "")
-        self.api_key = api_key if api_key is not None else os.environ.get("OPENSIRI_VLM_API_KEY", "")
-        self.auth_header = auth_header or os.environ.get("OPENSIRI_VLM_AUTH_HEADER") or "api-key"
+        vlm_model = model if model is not None else os.environ.get("OPENSIRI_VLM_MODEL", "")
+        vlm_base_url = base_url if base_url is not None else os.environ.get("OPENSIRI_VLM_URL", "")
+        
+        # Auto-configure for Grok if specified and unconfigured
+        is_grok = vlm_model and "grok" in vlm_model.lower()
+        if is_grok:
+            if not vlm_base_url:
+                vlm_base_url = "https://api.x.ai/v1"
+            auth_header = auth_header or os.environ.get("OPENSIRI_VLM_AUTH_HEADER") or "Authorization"
+        else:
+            auth_header = auth_header or os.environ.get("OPENSIRI_VLM_AUTH_HEADER") or "api-key"
+            
+        self.base_url = vlm_base_url.rstrip("/")
+        self.model = vlm_model
+        
+        # Resolve API Key
+        vlm_api_key = api_key if api_key is not None else os.environ.get("OPENSIRI_VLM_API_KEY", "")
+        if not vlm_api_key and is_grok:
+            vlm_api_key = os.environ.get("XAI_API_KEY", "")
+        self.api_key = vlm_api_key
+        self.auth_header = auth_header
         self.timeout = timeout
 
     @property
