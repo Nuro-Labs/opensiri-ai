@@ -4,7 +4,14 @@ import SwiftUI
 struct FloatingWindowConfigurator: NSViewRepresentable {
     let expanded: Bool
 
-    class Coordinator: NSObject { var lastExpandedState: Bool? = nil }
+    class Coordinator: NSObject, NSWindowDelegate {
+        var lastExpandedState: Bool? = nil
+
+        func windowShouldClose(_ sender: NSWindow) -> Bool {
+            sender.orderOut(nil)
+            return false
+        }
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -28,6 +35,7 @@ struct FloatingWindowConfigurator: NSViewRepresentable {
 
     private func configureWindow(_ window: NSWindow, coordinator: Coordinator) {
         window.title = "OpenSiri"
+        window.delegate = coordinator
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = false
         window.styleMask.remove(.fullSizeContentView)
