@@ -1,6 +1,24 @@
+<p align="center">
+  <img src="docs/logo.svg" alt="OpenSiri & Hypersave Logo" width="160" />
+</p>
+
 # 🍏 OpenSiri-AI: The Local Mac Personal Assistant Harness
 
-**OpenSiri-AI** is a production-grade, highly resilient, and privacy-centric open-source harness for building a local Mac personal assistant. It is designed to bridge local open-weights foundation models (such as `eliot-9b`) to macOS system resources while enforcing a deterministic, user-permissioned safety boundary.
+**OpenSiri-AI** is a production-grade, highly resilient, and privacy-centric open-source harness for building a local Mac personal assistant. It is powered by **Eliot-9B**, our proprietary personal reasoning foundation model optimized specifically for Apple Silicon unified memory and ultra-low latency execution. OpenSiri-AI is designed to bridge **Eliot-9B** to macOS system resources while enforcing a deterministic, user-permissioned safety boundary.
+
+---
+
+## 🧠 Personal Context Grounding with Hypersave API
+
+To enable advanced personal context grounding, cross-turn episodic memory, and cognitive-association search, OpenSiri-AI integrates natively with the **Hypersave API**. 
+
+To use this integration:
+1. Sign up and get a personal context API key at **[platform.hypersave.io](https://platform.hypersave.io)**.
+2. The Hypersave API is **completely free of charge until 01 January 2027**.
+3. Set your key as an environment variable:
+   ```bash
+   export HYPERSAVE_API_KEY="your_hypersave_api_key"
+   ```
 
 ---
 
@@ -72,6 +90,36 @@ sequenceDiagram
 *   **Stateful Memory Resolution**: Solves reference ambiguity across consecutive executions, remembering the topic discussed in the previous turn.
 *   **Local High-Speed MLX Execution**: Built to talk directly to local foundation models (e.g., `eliot-9b-v12-mlx-4bit` on port `8081`) via MLX on Apple Silicon.
 *   **Default Browser Integrity**: Prioritizes default browser commands (`open "URL"`) over blank-state Safari scripts to preserve active logins, cookies, and user accounts (e.g., autoplaying YouTube playlists seamlessly).
+
+---
+
+## 💡 Real-World Interaction Examples
+
+OpenSiri-AI allows you to interact with your Mac and personal context naturally. Below are concrete, production-validated examples of OpenSiri queries and their underlying actions:
+
+### 1. 📬 Mail & Memory Context Resolution
+* **Query:** `"Did I already reply to Carly about my Todoist one click setup? Use personal context and answer with evidence."`
+* **Behavior:** OpenSiri queries your personal memories to verify that Carly emailed you about the Todoist link, locates your reply sent at 10:42 AM, and answers with precise citation.
+
+### 2. 🏂 Cross-Service Knowledge Reasoning
+* **Query:** `"Last time I visited Skydive Spain, how much did I pay for insurance? Search across personal context."`
+* **Behavior:** Resolves the skydive trip dates from your Calendar, scans notes or receipts to find that you brought your own private liability insurance, and explains that no direct insurance fee was paid.
+
+### 3. 📍 Location-Based Smart Reminders
+* **Query:** `"Set a reminder to withdraw cash from the ATM next time I'm at Albertine on Von Swinden Strasse."`
+* **Behavior:** Formulates a structured location-geofenced reminder and registers it directly with the macOS Reminders connector.
+
+### 4. 🧮 Local Files & Multi-File Math Compilation
+* **Query:** `"How much did I spend in total on these receipts: openai.txt, cursor.txt, coffee.txt? Also show per vendor."`
+* **Behavior:** Reads the three requested text files locally, parses the spending amounts ($70.12, $43.76, and $20.00), computes the mathematical sum ($133.88), and presents a beautifully tabulated breakdown.
+
+### 5. 👁️ Live Screen Awareness & Contextual Analysis
+* **Query:** `"Give me feedback on this strength training routine."`
+* **Behavior:** OpenSiri inspects the active window's Accessibility (AX) tree (e.g. Safari window showing your workout plan), identifies the movements (bench press, overhead press, raises), and returns immediate feedback.
+
+### 6. 📰 Specific Mail Retrieval
+* **Query:** `"Find the latest Toastmasters District 59 newsletter. I mean an email."`
+* **Behavior:** Scans your email indexer specifically for the subject line "District 59 Newsletter - May Updates" sent on May 11 and displays its contents.
 
 ---
 
