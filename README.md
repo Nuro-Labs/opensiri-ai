@@ -142,15 +142,15 @@ To stay perfectly aligned with Apple's latest **Siri AI (WWDC 2026)** paradigm, 
 
 ## ⚖️ Comparison: OpenSiri-AI vs. Siri AI
 
-Yes, **OpenSiri-AI** is designed to replicate Siri AI's core personal intelligence capabilities, with the exception of the upcoming roadmap items (such as Visual Camera OCR and Spatial visionOS Coordination). For a complete, feature-by-feature parity checklist, deep architectural comparison, and upcoming roadmap feature details from Addendum A, refer to the full [Siri AI Parity and Comparison Guide](file:///Users/akhilponnada/Downloads/elliot/eliot-harness/docs/siri_ai_comparison.md).
+**OpenSiri-AI** is an open-source harness for building Siri-style Mac personal intelligence. It implements many core building blocks — local tool execution, source connectors, approvals, transcripts, local indexing, and optional memory — but it is not affiliated with Apple and does not claim complete Siri parity. For a feature-by-feature checklist and architecture comparison, refer to the [Siri AI Parity and Comparison Guide](docs/siri_ai_comparison.md).
 
-OpenSiri-AI offers several critical architectural advantages that make it superior for power users, developers, and privacy-conscious users:
+OpenSiri-AI offers several architectural tradeoffs that are useful for power users, developers, and privacy-conscious users:
 
 ### Where OpenSiri-AI is Better
 
-1.  **🔒 100% Local-Only Execution**
+1.  **🔒 Local-first execution with optional cloud services**
     *   **Siri AI:** Silently offloads high-reasoning tasks to Private Cloud Compute (PCC) servers or external partner APIs (like Google Gemini) over the network.
-    *   **OpenSiri-AI:** Runs entirely locally on your Apple Silicon hardware via high-speed, local MLX quantization models (`eliot-9b-v12-mlx-4bit` on port `8081`). No data ever leaves your machine, making it completely offline and private.
+    *   **OpenSiri-AI:** Can run with a local model server and local connectors. Hypersave, Grok/Foundry, VLM, or analysis-model integrations are optional and send only the enabled request/context to the configured service.
 2.  **🛡️ Auditable Sandbox & Payload Inspection**
     *   **Siri AI:** Operates as a black box—taking actions, accessing local databases, or making API calls silently without letting you review the exact command payload.
     *   **OpenSiri-AI:** Features a highly deterministic safety policy router. Every single command is outputted in transparent JSON, allowing you to run in a strict, fail-closed sandboxed mode (`DenyAllApproval`) or interactively inspect, approve, or reject the raw proposed shell script/AppleScript before execution.
@@ -197,7 +197,7 @@ python3 -m mlx_lm.server \
 ### 3. Run Acceptance Suites
 Verify that your local setup compiles and executes correctly:
 ```bash
-# Run the WWDC Acceptance Suite (Expects 100% Pass)
+# Run the WWDC Acceptance Suite
 python3 tests/wwdc_acceptance.py --model-url http://localhost:8081
 
 # Run the Siri Examples Acceptance Suite

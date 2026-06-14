@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum Theme {
     // Premium color palette
@@ -51,14 +52,57 @@ func sourceIcon(_ source: String) -> String {
     return "circle.grid.2x2"
 }
 
+struct WindowDragDetector: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        DragNSView()
+    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+class DragNSView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        self.isHidden = true
+        defer { self.isHidden = false }
+        
+        guard let superview = self.superview else { return nil }
+        guard let hitView = superview.hitTest(point) else { return nil }
+        
+        var current: NSView? = hitView
+        while let view = current {
+            let className = String(describing: type(of: view))
+            if view is NSControl ||
+               view is NSTextView ||
+               view is NSButton ||
+               view is NSTextField ||
+               view is NSScrollView ||
+               className.contains("Button") ||
+               className.contains("TextField") ||
+               className.contains("TextView") ||
+               className.contains("ScrollView") ||
+               className.contains("ClipView") ||
+               className.contains("Slider") ||
+               className.contains("Toggle") ||
+               className.contains("Menu") ||
+               className.contains("List") ||
+               className.contains("Sheet") ||
+               className.contains("Control") {
+                return hitView
+            }
+            current = view.superview
+        }
+        return self
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.performDrag(with: event)
+    }
+}
+
 extension View {
     func macPanel(cornerRadius: CGFloat, strokeOpacity: Double = 0.28) -> some View {
         self
-            .background(.regularMaterial)
-            .overlay(
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.white.opacity(strokeOpacity), lineWidth: 1)
-            )
+            .background(Color(white: 0.11).opacity(0.96))
+            .overlay(WindowDragDetector())
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 }

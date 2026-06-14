@@ -5,41 +5,98 @@ struct CommandToolbar: View {
     
     let collapse: () -> Void
     let stop: () -> Void
+    let clearConversation: () -> Void
+    let openHistory: () -> Void
 
     var body: some View {
         @Bindable var state = state
         
         HStack(spacing: 12) {
-            IconSurfaceButton(systemName: "arrow.down.right.and.arrow.up.left", action: collapse)
-                .help("Collapse")
+            // Left Side: Brand & Cohesive Navigation
+            HStack(spacing: 8) {
+                BrandMark(isRunning: state.isRunning)
+                    .frame(width: 24, height: 24)
+                
+                Text("OpenSiri")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.primary)
+            }
+            .padding(.trailing, 4)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(state.isRunning ? "Working" : "Ready")
-                    .font(.system(size: 15, weight: .semibold))
-                Text(toolbarDetail)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            HStack(spacing: 6) {
+                IconSurfaceButton(systemName: "square.and.pencil", action: clearConversation)
+                    .help("New Conversation")
+                
+                IconSurfaceButton(systemName: "clock.arrow.circlepath", action: openHistory)
+                    .help("History")
+                
+                IconSurfaceButton(systemName: "gearshape.fill", action: { state.showSettings = true })
+                    .help("Settings")
             }
 
-            Spacer(minLength: 16)
+            Spacer(minLength: 12)
 
-            Picker("Approval", selection: $state.approvalMode) {
-                Text("Deny").tag("deny")
-                Text("Ask").tag("app")
-                Text("Yes").tag("yes")
+            // Center: Interactive Hypersave Connectivity Pill
+            if !state.isHypersaveConnected {
+                Button(action: { state.showSettings = true }) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(Theme.amberWarning)
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Hypersave Disconnected")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.primary.opacity(0.85))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Theme.amberWarning.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(Theme.amberWarning.opacity(0.24), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .help("Configure Hypersave memory in Settings")
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
             }
-            .pickerStyle(.segmented)
-            .frame(width: 146)
 
-            IconSurfaceButton(systemName: "stop.circle", action: stop)
-                .disabled(!state.isRunning)
-                .opacity(state.isRunning ? 1 : 0.38)
-                .help("Stop")
+            Spacer(minLength: 12)
+
+            // Right Side: Metrics & Panel Actions
+            HStack(spacing: 12) {
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(state.isRunning ? "Working" : "Ready")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(state.isRunning ? Theme.electricCyan : .secondary)
+                    Text(toolbarDetail)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+                .frame(width: 100, alignment: .trailing)
+
+                Picker("Approval", selection: $state.approvalMode) {
+                    Text("Deny").tag("deny")
+                    Text("Ask").tag("app")
+                    Text("Auto").tag("yes")
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 130)
+
+                IconSurfaceButton(systemName: "stop.circle.fill", prominent: state.isRunning, action: stop)
+                    .disabled(!state.isRunning)
+                    .opacity(state.isRunning ? 1 : 0.38)
+                    .help("Stop")
+
+                IconSurfaceButton(systemName: "arrow.down.right.and.arrow.up.left", action: collapse)
+                    .help("Collapse")
+            }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
         .background(.regularMaterial.opacity(0.62))
+        .animation(.smooth(duration: 0.22), value: state.isHypersaveConnected)
     }
 
     private var toolbarDetail: String {

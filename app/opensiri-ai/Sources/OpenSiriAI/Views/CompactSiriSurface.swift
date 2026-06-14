@@ -8,6 +8,9 @@ struct CompactSiriSurface: View {
     let expand: () -> Void
     let run: () -> Void
 
+    @State private var hoveringExpand = false
+    @State private var hoveringSend = false
+
     private var trimmedTask: String { state.task.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
@@ -15,7 +18,7 @@ struct CompactSiriSurface: View {
         
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                BrandMark(isRunning: state.isRunning)
+                BrandMark(isRunning: state.isRunning, showFullLogo: false)
                     .frame(width: 34, height: 34)
 
                 NativeInput(text: $state.task, placeholder: "Ask OpenSiri", fontSize: 23, focusToken: focusToken, onSubmit: run)
@@ -23,13 +26,30 @@ struct CompactSiriSurface: View {
 
                 StatusDot(running: state.isRunning, status: state.status)
 
-                IconSurfaceButton(systemName: "arrow.up.left.and.arrow.down.right", action: expand)
-                    .help("Expand")
+                Button(action: expand) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.primary.opacity(hoveringExpand ? 0.95 : 0.62))
+                        .scaleEffect(hoveringExpand ? 1.08 : 1.0)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .onHover { hoveringExpand = $0 }
+                .animation(.smooth(duration: 0.16), value: hoveringExpand)
+                .help("Expand")
 
-                IconSurfaceButton(systemName: "arrow.up.circle.fill", prominent: true, action: run)
-                    .disabled(trimmedTask.isEmpty || state.isRunning)
-                    .opacity(trimmedTask.isEmpty || state.isRunning ? 0.36 : 1)
-                    .help("Run")
+                Button(action: run) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(trimmedTask.isEmpty || state.isRunning ? Color.primary.opacity(0.36) : Color.accentColor)
+                        .scaleEffect(hoveringSend ? 1.08 : 1.0)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .disabled(trimmedTask.isEmpty || state.isRunning)
+                .onHover { hoveringSend = $0 }
+                .animation(.smooth(duration: 0.16), value: hoveringSend)
+                .help("Run")
             }
 
             if state.isRunning {

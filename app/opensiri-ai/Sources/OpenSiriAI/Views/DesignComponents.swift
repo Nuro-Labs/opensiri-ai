@@ -1,19 +1,44 @@
 import SwiftUI
+import AppKit
+
+struct SVGImage: View {
+    let name: String
+
+    var body: some View {
+        if let path = Bundle.main.path(forResource: name, ofType: "svg"),
+           let nsImage = NSImage(contentsOfFile: path) {
+            Image(nsImage: nsImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+        } else {
+            // High-quality fallback design if resources are missing during dev/testing
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.88))
+                Image(systemName: "sparkles")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+        }
+    }
+}
 
 struct BrandMark: View {
     let isRunning: Bool
+    var showFullLogo: Bool = false
+    @State private var animate = false
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.primary.opacity(0.88))
-            Image(systemName: isRunning ? "wand.and.stars" : "sparkles")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(.white)
-                .symbolEffect(.pulse, options: .repeating, value: isRunning)
-        }
-        .scaleEffect(isRunning ? 1.03 : 1)
-        .animation(.smooth(duration: 0.22, extraBounce: 0.08), value: isRunning)
+        SVGImage(name: showFullLogo ? "logo" : "icon")
+            .opacity(isRunning && animate ? 0.45 : 1.0)
+            .scaleEffect(isRunning ? 1.06 : 1)
+            .animation(isRunning ? .easeInOut(duration: 0.85).repeatForever(autoreverses: true) : .smooth(duration: 0.22), value: animate)
+            .onAppear {
+                if isRunning { animate = true }
+            }
+            .onChange(of: isRunning) { _, newValue in
+                animate = newValue
+            }
     }
 }
 

@@ -229,7 +229,15 @@ def test_vision_grok_defaults(monkeypatch):
 def test_model_full_foundry_url():
     from eliot_harness.model import EliotModelClient
     url = "https://example.services.ai.azure.com/openai/v1/chat/completions"
-    assert EliotModelClient(base_url=url, model="grok-4.3").chat_url() == url
+    client = EliotModelClient(base_url=url, model="grok-4.3")
+    assert client.chat_url() == url
+    assert client.auth_header == "api-key"
+
+
+def test_model_remote_xai_uses_bearer():
+    from eliot_harness.model import EliotModelClient
+    client = EliotModelClient(base_url="https://api.x.ai", model="grok", api_key="xai-test")
+    assert client.auth_header == "Authorization"
 
 
 def test_analysis_client_unconfigured():

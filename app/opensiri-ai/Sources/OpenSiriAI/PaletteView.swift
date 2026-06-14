@@ -10,23 +10,20 @@ struct PaletteView: View {
         @Bindable var state = state
         Group {
             if expanded {
-                ZStack {
-                    DesktopBackdrop()
-                    ExpandedSiriSurface(
-                        focused: $focused,
-                        focusToken: focusToken,
-                        collapse: { expanded = false },
-                        run: run,
-                        stop: stop,
-                        openTranscript: openTranscript,
-                        openAudit: openAudit,
-                        openHistory: openHistory,
-                        clearConversation: clearConversation,
-                        approveRequest: approveRequest,
-                        denyRequest: denyRequest
-                    )
-                    .transition(.scale(scale: 0.97).combined(with: .opacity))
-                }
+                ExpandedSiriSurface(
+                    focused: $focused,
+                    focusToken: focusToken,
+                    collapse: { expanded = false },
+                    run: run,
+                    stop: stop,
+                    openTranscript: openTranscript,
+                    openAudit: openAudit,
+                    openHistory: openHistory,
+                    clearConversation: clearConversation,
+                    approveRequest: approveRequest,
+                    denyRequest: denyRequest
+                )
+                .transition(.scale(scale: 0.97).combined(with: .opacity))
             } else {
                 CompactSiriSurface(
                     focused: $focused,
@@ -44,13 +41,16 @@ struct PaletteView: View {
         .onReceive(NotificationCenter.default.publisher(for: .centerOpenSiriWindow)) { _ in recenterWindow(); focusSoon() }
         .task { await pollApprovals() }
         .sheet(isPresented: $state.showHistory) { HistoryView(sessions: state.sessionSummaries) }
+        .sheet(isPresented: $state.showSettings) {
+            SettingsView()
+                .environment(state)
+        }
     }
 
     func run() {
         let submitted = state.task.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !state.isRunning, !submitted.isEmpty else { return }
         if state.enableMemoryWrite { state.enableMemory = true }
-        expanded = true
         do {
             try HarnessBridge.run(task: submitted, state: state)
             state.task = ""

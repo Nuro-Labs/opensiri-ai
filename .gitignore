@@ -13,4 +13,4 @@ results/
 app/opensiri-ai/.build/
 .swiftpm/
 .pytest_cache/
-
+app/opensiri-ai/AppIcon.icns

@@ -34,12 +34,6 @@ struct SettingsView: View {
         }
         .frame(width: 760, height: 660)
         .background(.regularMaterial)
-        .onAppear {
-            hypersaveKey = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key") ?? ""
-            visionKey = Keychain.read(service: "opensiri-ai", account: "vision-api-key") ?? ""
-            analysisKey = Keychain.read(service: "opensiri-ai", account: "analysis-api-key") ?? ""
-            modelAPIKey = Keychain.read(service: "opensiri-ai", account: "model-api-key") ?? ""
-        }
     }
 }
 
@@ -104,8 +98,12 @@ struct GeneralSettingsPane: View {
                         Spacer()
                         Button("Save") {
                             state.persist()
-                            let savedModelKey = Keychain.save(service: "opensiri-ai", account: "model-api-key", value: modelAPIKey)
-                            keyStatus = savedModelKey ? "Settings and key saved" : "Settings saved, key save failed"
+                            if modelAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                keyStatus = "Settings saved"
+                            } else {
+                                keyStatus = Keychain.save(service: "opensiri-ai", account: "model-api-key", value: modelAPIKey) ? "Settings and key saved" : "Settings saved, key save failed"
+                                modelAPIKey = ""
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                     }
@@ -124,7 +122,9 @@ struct GeneralSettingsPane: View {
                     HStack {
                         Spacer()
                         Button("Save Key") {
+                            guard !visionKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { keyStatus = "Paste a Vision key before saving"; return }
                             keyStatus = Keychain.save(service: "opensiri-ai", account: "vision-api-key", value: visionKey) ? "Vision key saved" : "Vision key failed"
+                            visionKey = ""
                         }
                     }
                 }
@@ -142,7 +142,9 @@ struct GeneralSettingsPane: View {
                     HStack {
                         Spacer()
                         Button("Save Key") {
+                            guard !analysisKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { keyStatus = "Paste an Analysis key before saving"; return }
                             keyStatus = Keychain.save(service: "opensiri-ai", account: "analysis-api-key", value: analysisKey) ? "Analysis key saved" : "Analysis key failed"
+                            analysisKey = ""
                         }
                     }
                 }
@@ -155,9 +157,19 @@ struct GeneralSettingsPane: View {
                         SecureField("Keychain item", text: $hypersaveKey)
                     }
                     HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("Hypersave is our flagship cognitive-memory product, proudly powered by Nuro AI Labs.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("Get your API key at platform.hypersave.io (Free until Jan 1, 2027).")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                         Spacer()
                         Button("Save Key") {
+                            guard !hypersaveKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { keyStatus = "Paste a Hypersave key before saving"; return }
                             keyStatus = Keychain.save(service: "opensiri-ai", account: "hypersave-api-key", value: hypersaveKey) ? "Hypersave key saved" : "Hypersave key failed"
+                            hypersaveKey = ""
                         }
                     }
                 }

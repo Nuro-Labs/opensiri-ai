@@ -133,6 +133,6 @@ class CalendarConnector(Connector):
             return ConnectorResult(f"DRY RUN calendar event: {title}", {"requires_approval": True})
         out = eventkit("create-event", title)
         if not out:
-            script = 'tell application "Calendar" to tell calendar 1 to make new event with properties {summary:' + q(title) + ', start date:(current date), end date:(current date) + 3600}'
+            script = 'tell application "Calendar" to tell default calendar to make new event with properties {summary:' + q(title) + ', start date:(current date), end date:(current date) + 3600}'
             out = run_osa(script)
         return ConnectorResult(out, {"source": self.source})

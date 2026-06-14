@@ -40,6 +40,8 @@ class HypersaveClient:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
+            if e.code == 429:
+                raise RuntimeError("Hypersave rate limited the request. Wait a moment and retry.") from e
             raise RuntimeError(f"Hypersave HTTP {e.code}") from e
 
     def ask(self, query: str, max_sensitivity: str = "high") -> dict[str, Any]:

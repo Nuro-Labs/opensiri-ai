@@ -17,6 +17,12 @@ TC_RE = re.compile(r"<tool_call>\s*<function=([^>]+)>\s*(.*?)\s*</function>\s*</
 PARAM_RE = re.compile(r"<parameter=([^>]+)>\s*(.*?)\s*</parameter>", re.S)
 
 
+def _safe_parse_error(message: str) -> None:
+    if os.environ.get("OPENSIRI_DEBUG_MODEL_PARSE"):
+        with open("/tmp/opensiri_debug.log", "a") as f:
+            f.write(message[:300] + "\n")
+
+
 @dataclass
 class ModelResult:
     action: Action | None
@@ -30,7 +36,12 @@ class EliotModelClient:
         self.model = model
         self.thinking = thinking
         self.api_key = api_key or os.environ.get("OPENSIRI_MODEL_API_KEY") or ""
-        self.auth_header = auth_header or os.environ.get("OPENSIRI_MODEL_AUTH_HEADER") or "api-key"
+        
+        # Smart detection: xAI/OpenAI-style endpoints use bearer auth; Azure/Foundry uses api-key.
+        is_remote = not ("127.0.0.1" in self.base_url or "localhost" in self.base_url)
+        is_foundry = "services.ai.azure.com" in self.base_url or "openai.azure.com" in self.base_url
+        default_header = "Authorization" if ((is_remote and not is_foundry) or self.api_key.startswith("xai-")) else "api-key"
+        self.auth_header = auth_header or os.environ.get("OPENSIRI_MODEL_AUTH_HEADER") or default_header
 
     def chat_url(self) -> str:
         if "/chat/completions" in self.base_url:
@@ -68,8 +79,7 @@ class EliotModelClient:
                 try:
                     args = json.loads(args)
                 except json.JSONDecodeError:
-                    with open("/tmp/opensiri_debug.log", "a") as f:
-                        f.write(f"JSONDecodeError on arguments: {args!r} | Full msg: {json.dumps(msg)}\n")
+                    _safe_parse_error("JSONDecodeError parsing tool arguments")
                     return None
             return normalize_action({"name": fn.get("name"), "args": args})
         content = (msg.get("content") or "").strip()
@@ -78,12 +88,10 @@ class EliotModelClient:
         m = TC_RE.search(content)
         if not m:
             if "<tool_call" in content:
-                with open("/tmp/opensiri_debug.log", "a") as f:
-                    f.write(f"TC_RE mismatch but <tool_call present: {content!r} | Full msg: {json.dumps(msg)}\n")
+                _safe_parse_error("Tool-call markup present but not parseable")
                 return None
             if content:
                 return normalize_action({"name": "done", "args": {"summary": content}})
-            with open("/tmp/opensiri_debug.log", "a") as f:
-                f.write(f"No content and no tool calls | Full msg: {json.dumps(msg)}\n")
+            _safe_parse_error("No content and no tool calls")
             return None
         return normalize_action({"name": m.group(1), "args": {pm.group(1): pm.group(2) for pm in PARAM_RE.finditer(m.group(2))}})

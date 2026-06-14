@@ -98,9 +98,18 @@ final class AppState {
     var lastTranscript: String = ""
     var approvalRequest: ApprovalRequest? = nil
     var showHistory: Bool = false
+    var showSettings: Bool = false
     var sessionSummaries: [SessionSummary] = []
     var process: Process? = nil
     var approvalDir: URL? = nil
+
+    var isHypersaveConnected: Bool {
+        guard enableMemory else { return false }
+        if let key = Keychain.read(service: "opensiri-ai", account: "hypersave-api-key"), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        return false
+    }
 
     var auditURL: URL { dataRoot().appendingPathComponent("results/app-audit.jsonl") }
     var sessionDir: URL { FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/share/opensiri-ai/sessions") }

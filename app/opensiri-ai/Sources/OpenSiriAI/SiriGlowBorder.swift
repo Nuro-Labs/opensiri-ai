@@ -10,11 +10,15 @@ struct SiriGlowBorder: ViewModifier {
     func body(content: Content) -> some View {
         content
             .overlay(
-                RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
-                    .strokeBorder(strokeGradient, lineWidth: isRunning ? 2.5 : 1.2)
-                    .blur(radius: isRunning ? 0.6 : 0.2)
-                    .shadow(color: glowColor.opacity(isRunning ? 0.75 : 0.15), radius: isRunning ? 16 : 3)
-                    .animation(Theme.siriSpring, value: isRunning)
+                Group {
+                    if isRunning {
+                        RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
+                            .strokeBorder(strokeGradient, lineWidth: 2.0)
+                            .blur(radius: 0.5)
+                            .shadow(color: glowColor.opacity(0.65), radius: 14)
+                    }
+                }
+                .animation(Theme.siriSpring, value: isRunning)
             )
             .scaleEffect(pulseScale)
             .onChange(of: isRunning) { _, active in

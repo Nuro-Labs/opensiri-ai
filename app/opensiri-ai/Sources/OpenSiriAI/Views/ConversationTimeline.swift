@@ -187,8 +187,8 @@ struct MessageBubble: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                if message.role == .assistant && looksStructured(message.text) {
-                    StructuredResultText(text: message.text)
+                if message.role == .assistant {
+                    FormattedMessageContent(text: message.text)
                 } else {
                     Text(message.text)
                         .font(.system(size: message.role == .assistant ? 15 : 14))
@@ -236,283 +236,599 @@ struct MessageBubble: View {
         case .system: return Color.blue.opacity(0.12)
         }
     }
+}
 
-    private func looksStructured(_ text: String) -> Bool {
-        text.contains(" | ") ||
-        text.contains("Subject:") ||
-        text.contains("DRY RUN") ||
-        text.contains("Created") ||
-        text.contains("created") ||
-        text.contains("Path: ") ||
-        text.contains("Event: ") ||
-        text.contains("Reminder: ") ||
-        text.contains("Task: ") ||
-        text.contains("Calendar: ")
+struct MessageBlock: Identifiable {
+    let id = UUID()
+    let content: BlockType
+    
+    enum BlockType {
+        case text(String)
+        case mail(subject: String, from: String, date: String, body: String?)
+        case file(path: String, filename: String, url: URL, details: [String: String], workPerformed: [String])
+        case calendar(day: String, title: String, location: String?, time: String?)
+        case reminder(title: String, listName: String, location: String?, isCompleted: Bool)
     }
 }
 
-struct RoleBadge: View {
-    let role: ChatMessage.Role
-
-    var body: some View {
-        ZStack {
-            Circle().fill(background)
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(foreground)
-        }
-        .frame(width: 28, height: 28)
-    }
-
-    private var icon: String {
-        switch role {
-        case .user: return "person.fill"
-        case .assistant: return "sparkles"
-        case .system: return "checkmark.seal.fill"
-        }
-    }
-
-    private var background: Color {
-        switch role {
-        case .user: return Color.accentColor.opacity(0.16)
-        case .assistant: return Color.primary.opacity(0.10)
-        case .system: return Color.blue.opacity(0.12)
-        }
-    }
-
-    private var foreground: Color {
-        switch role {
-        case .user: return .accentColor
-        case .assistant: return .primary
-        case .system: return .blue
-        }
-    }
-}
-
-struct StructuredResultText: View {
+struct FormattedMessageContent: View {
     let text: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            let lines = Array(text.split(separator: "\n", omittingEmptySubsequences: false).map(String.init).prefix(10).enumerated())
-            ForEach(lines, id: \.offset) { _, line in
-                ResultLine(line: line)
-                    .transition(.opacity.combined(with: .offset(y: 8)))
+        VStack(alignment: .leading, spacing: 12) {
+            let blocks = parseMessageText(text)
+            ForEach(blocks) { block in
+                switch block.content {
+                case .text(let paragraph):
+                    Text(paragraph)
+                        .font(.system(size: 15))
+                        .foregroundStyle(.primary)
+                        .textSelection(.enabled)
+                        .lineSpacing(4)
+                case .mail(let subject, let from, let date, let body):
+                    MailCard(subject: subject, from: from, date: date, mailBody: body)
+                case .file(let path, let filename, let url, let details, let work):
+                    FileCard(filename: filename, path: path, url: url, details: details, workPerformed: work)
+                case .calendar(let day, let title, let location, let time):
+                    CalendarCard(day: day, title: title, location: location, time: time)
+                case .reminder(let title, let list, let location, let isCompleted):
+                    ReminderCard(title: title, listName: list, location: location, isCompleted: isCompleted)
+                }
             }
         }
     }
 }
 
-struct ResultLine: View {
-    let line: String
+private func clean(_ s: String) -> String {
+    var trimmed = s.replacingOccurrences(of: "**", with: "")
+                   .replacingOccurrences(of: "*", with: "")
+                   .replacingOccurrences(of: "_", with: "")
+                   .trimmingCharacters(in: .whitespacesAndNewlines)
+    let bulletPrefixes = ["- ", "* ", "• "]
+    for prefix in bulletPrefixes {
+        if trimmed.hasPrefix(prefix) {
+            trimmed = String(trimmed.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            break
+        }
+    }
+    return trimmed
+}
 
-    var body: some View {
-        if isMailLine {
-            let parsed = parseMailLine(line)
-            MailCard(subject: parsed.subject, from: parsed.from, date: parsed.date, mailBody: parsed.body)
-        } else if isCalendarLine {
-            let parsed = parseCalendarLine(line)
-            CalendarCard(day: parsed.day, title: parsed.title, location: parsed.location, time: parsed.time)
-        } else if isReminderLine {
-            let parsed = parseReminderLine(line)
-            ReminderCard(title: parsed.title, listName: parsed.list, location: parsed.location, isCompleted: parsed.isCompleted)
-        } else if isFileLine {
-            let parsed = parseFileLine(line)
-            FileCard(filename: parsed.filename, path: parsed.path, url: parsed.url, details: parsed.details, workPerformed: parsed.workPerformed)
-        } else {
-            HStack(alignment: .top, spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(iconColor)
-                    .frame(width: 18)
-                    .padding(.top, 2)
-
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(line.isEmpty ? " " : line)
-                        .font(.system(size: 14))
-                        .textSelection(.enabled)
+private func findAbsolutePath(in line: String) -> String? {
+    let prefixes = ["/Users/", "/private/tmp/", "/tmp/"]
+    for prefix in prefixes {
+        if let range = line.range(of: prefix) {
+            let startIdx = range.lowerBound
+            var endIdx = range.upperBound
+            let pathChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "/_-."))
+            while endIdx < line.endIndex {
+                let char = line[endIdx]
+                if let scalar = char.unicodeScalars.first, pathChars.contains(scalar) {
+                    endIdx = line.index(after: endIdx)
+                } else {
+                    break
                 }
+            }
+            let path = String(line[startIdx..<endIdx])
+            if path.count > prefix.count {
+                return path
             }
         }
     }
+    return nil
+}
 
-    private func parseMailLine(_ line: String) -> (subject: String, from: String, date: String, body: String?) {
-        var subject = ""
-        var from = ""
-        var date = ""
-        var body: String? = nil
+private func parseMessageText(_ text: String) -> [MessageBlock] {
+    var blocks: [MessageBlock] = []
+    let lines = text.components(separatedBy: "\n")
+    var i = 0
+    
+    while i < lines.count {
+        let rawLine = lines[i]
+        let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        let parts = line.components(separatedBy: " | ")
-        for part in parts {
-            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("Subject: ") {
-                subject = String(trimmed.dropFirst("Subject: ".count))
-            } else if trimmed.hasPrefix("From: ") {
-                from = String(trimmed.dropFirst("From: ".count))
-            } else if trimmed.hasPrefix("Date: ") {
-                date = String(trimmed.dropFirst("Date: ".count))
-            } else if trimmed.hasPrefix("Body: ") {
-                body = String(trimmed.dropFirst("Body: ".count))
-            } else if trimmed.hasPrefix("Mailbox: ") {
-                let mailbox = String(trimmed.dropFirst("Mailbox: ".count))
-                if body == nil {
-                    body = "Mailbox: \(mailbox)"
+        if line.isEmpty {
+            if !blocks.isEmpty {
+                if case .text(let prevText) = blocks[blocks.count - 1].content {
+                    blocks[blocks.count - 1] = MessageBlock(content: .text(prevText + "\n"))
                 }
             }
+            i += 1
+            continue
         }
-        return (subject, from, date, body)
-    }
-
-    private func parseCalendarLine(_ line: String) -> (day: String, title: String, location: String?, time: String?) {
-        var day = "Upcoming Event"
-        var title = "Calendar Event"
-        var location: String? = nil
-        var time: String? = nil
         
-        let parts = line.components(separatedBy: " | ")
-        for part in parts {
-            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("Event: ") {
-                let val = String(trimmed.dropFirst("Event: ".count))
-                if !val.isEmpty { day = val }
-            } else if trimmed.hasPrefix("Calendar: ") {
-                let val = String(trimmed.dropFirst("Calendar: ".count))
-                if !val.isEmpty { day = val }
-            } else if trimmed.hasPrefix("Title: ") {
-                title = String(trimmed.dropFirst("Title: ".count))
-            } else if trimmed.hasPrefix("Summary: ") {
-                title = String(trimmed.dropFirst("Summary: ".count))
-            } else if trimmed.hasPrefix("Location: ") {
-                location = String(trimmed.dropFirst("Location: ".count))
-            } else if trimmed.hasPrefix("Time: ") {
-                time = String(trimmed.dropFirst("Time: ".count))
-            }
-        }
-        if parts.count == 1 {
-            if line.contains(": ") {
-                let leftRight = line.components(separatedBy: ": ")
-                if leftRight.count >= 2 {
-                    title = leftRight[1...].joined(separator: ": ")
-                    let left = leftRight[0]
-                    if left.contains(" - ") {
-                        let timesAndDays = left.components(separatedBy: " - ")
-                        if timesAndDays.count >= 2 {
-                            day = timesAndDays[0]
-                            time = timesAndDays[1]
-                        } else {
-                            day = left
+        let cleanedLine = clean(line)
+        
+        // 1. Check for drafted email block
+        if line.lowercased().hasPrefix("draft email to") {
+            let recipient = String(line.dropFirst("draft email to".count)).trimmingCharacters(in: CharacterSet(charactersIn: " :"))
+            
+            if i + 1 < lines.count {
+                let nextLine = lines[i + 1].trimmingCharacters(in: .whitespacesAndNewlines)
+                if nextLine.lowercased().hasPrefix("subject:") {
+                    let subject = String(nextLine.dropFirst("subject:".count)).trimmingCharacters(in: CharacterSet(charactersIn: " :"))
+                    
+                    var bodyLines: [String] = []
+                    var j = i + 2
+                    while j < lines.count {
+                        let bodyLine = lines[j]
+                        let trimmedBodyLine = bodyLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                        
+                        if trimmedBodyLine.lowercased().hasPrefix("draft email to") ||
+                           trimmedBodyLine.hasPrefix("Path: ") ||
+                           trimmedBodyLine.hasPrefix("Reminder: ") ||
+                           trimmedBodyLine.hasPrefix("Task: ") ||
+                           (trimmedBodyLine.contains("Subject:") && trimmedBodyLine.contains("From:")) {
+                            break
                         }
+                        bodyLines.append(bodyLine)
+                        j += 1
+                    }
+                    
+                    let body = bodyLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                    blocks.append(MessageBlock(content: .mail(subject: subject, from: recipient, date: "Draft", body: body.isEmpty ? nil : body)))
+                    i = j
+                    continue
+                }
+            }
+        }
+        
+        // 2. Check for multi-line / markdown Mail (searched/found)
+        var mailSubject: String? = nil
+        var mailFrom: String? = nil
+        var mailDate: String? = nil
+        var mailBody: String? = nil
+        
+        let windowSize = min(5, lines.count - i)
+        var subjectIdx = -1
+        var fromIdx = -1
+        var dateIdx = -1
+        var bodyIdx = -1
+        
+        for offset in 0..<windowSize {
+            let idx = i + offset
+            let l = clean(lines[idx])
+            if l.lowercased().hasPrefix("subject:") {
+                subjectIdx = idx
+            } else if l.lowercased().hasPrefix("from:") {
+                fromIdx = idx
+            } else if l.lowercased().hasPrefix("date:") {
+                dateIdx = idx
+            } else if l.lowercased().hasPrefix("body:") || l.lowercased().hasPrefix("content:") {
+                bodyIdx = idx
+            }
+        }
+        
+        if (subjectIdx != -1 && fromIdx != -1) || (line.contains("Subject:") && line.contains("From:")) {
+            if line.contains("Subject:") && line.contains("From:") {
+                let parsed = parseMailLine(line)
+                blocks.append(MessageBlock(content: .mail(subject: parsed.subject, from: parsed.from, date: parsed.date, body: parsed.body)))
+                i += 1
+                continue
+            } else {
+                let subLine = clean(lines[subjectIdx])
+                mailSubject = String(subLine.dropFirst("subject:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                let fromLine = clean(lines[fromIdx])
+                mailFrom = String(fromLine.dropFirst("from:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if dateIdx != -1 {
+                    let dLine = clean(lines[dateIdx])
+                    mailDate = String(dLine.dropFirst("date:".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+                } else {
+                    mailDate = "Recent"
+                }
+                
+                let maxHeaderIdx = max(subjectIdx, max(fromIdx, dateIdx))
+                var startBodyIdx = maxHeaderIdx + 1
+                if bodyIdx != -1 && bodyIdx > maxHeaderIdx {
+                    startBodyIdx = bodyIdx + 1
+                }
+                
+                var bodyLines: [String] = []
+                var currentIdx = startBodyIdx
+                while currentIdx < lines.count {
+                    let rawL = lines[currentIdx]
+                    let l = clean(rawL)
+                    
+                    if l.lowercased().hasPrefix("subject:") || 
+                       l.lowercased().hasPrefix("from:") || 
+                       l.lowercased().hasPrefix("path:") ||
+                       l.lowercased().hasPrefix("reminder:") ||
+                       l.lowercased().hasPrefix("task:") ||
+                       l.lowercased().hasPrefix("draft email to") ||
+                       l.lowercased().hasPrefix("event:") ||
+                       l.lowercased().hasPrefix("calendar:") {
+                        break
+                    }
+                    
+                    bodyLines.append(rawL)
+                    currentIdx += 1
+                }
+                
+                let bodyContent = bodyLines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+                mailBody = bodyContent.isEmpty ? nil : bodyContent
+                
+                blocks.append(MessageBlock(content: .mail(subject: mailSubject ?? "No Subject", from: mailFrom ?? "Unknown Sender", date: mailDate ?? "Recent", body: mailBody)))
+                i = currentIdx
+                continue
+            }
+        }
+        
+        // 3. Check for File Line or absolute path in the line
+        if let absPath = findAbsolutePath(in: line) {
+            if let range = line.range(of: absPath) {
+                let beforeText = String(line[..<range.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                let afterText = String(line[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                
+                if !beforeText.isEmpty {
+                    let cleanBefore = beforeText.trimmingCharacters(in: CharacterSet(charactersIn: " -:*`\"'"))
+                    if !cleanBefore.isEmpty {
+                        if !blocks.isEmpty, case .text(let prevText) = blocks[blocks.count - 1].content {
+                            let spacer = prevText.hasSuffix("\n") || prevText.isEmpty ? "" : "\n"
+                            blocks[blocks.count - 1] = MessageBlock(content: .text(prevText + spacer + beforeText))
+                        } else {
+                            blocks.append(MessageBlock(content: .text(beforeText)))
+                        }
+                    }
+                }
+                
+                var details: [String: String] = [:]
+                var workPerformed: [String] = []
+                
+                let parts = line.components(separatedBy: " | ")
+                if parts.count > 1 {
+                    let parsed = parseFileLine(line)
+                    blocks.append(MessageBlock(content: .file(path: parsed.path, filename: parsed.filename, url: parsed.url, details: parsed.details, workPerformed: parsed.workPerformed)))
+                } else {
+                    var j = i + 1
+                    while j < lines.count {
+                        let nextRaw = lines[j]
+                        let nextClean = clean(nextRaw)
+                        if nextClean.isEmpty {
+                            j += 1
+                            continue
+                        }
+                        
+                        if nextClean.lowercased().hasPrefix("subject:") ||
+                           nextClean.lowercased().hasPrefix("from:") ||
+                           nextClean.lowercased().hasPrefix("path:") ||
+                           nextClean.lowercased().hasPrefix("reminder:") ||
+                           nextClean.lowercased().hasPrefix("task:") ||
+                           nextClean.lowercased().hasPrefix("event:") ||
+                           nextClean.lowercased().hasPrefix("calendar:") {
+                            break
+                        }
+                        
+                        if nextClean.contains(":") {
+                            let kv = nextClean.components(separatedBy: ":")
+                            if kv.count >= 2 {
+                                let k = kv[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                                let v = kv[1...].joined(separator: ":").trimmingCharacters(in: .whitespacesAndNewlines)
+                                if !k.isEmpty && !v.isEmpty {
+                                    details[k] = v
+                                }
+                            }
+                            j += 1
+                        } else if nextClean.hasPrefix("-") || nextClean.hasPrefix("•") {
+                            let work = nextClean.trimmingCharacters(in: CharacterSet(charactersIn: "-• ")).trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !work.isEmpty {
+                                workPerformed.append(work)
+                            }
+                            j += 1
+                        } else {
+                            break
+                        }
+                    }
+                    
+                    let url = URL(fileURLWithPath: absPath)
+                    let filename = url.lastPathComponent.isEmpty ? "document" : url.lastPathComponent
+                    blocks.append(MessageBlock(content: .file(path: absPath, filename: filename, url: url, details: details, workPerformed: workPerformed)))
+                    i = j
+                    continue
+                }
+                
+                if !afterText.isEmpty {
+                    let cleanAfter = afterText.trimmingCharacters(in: CharacterSet(charactersIn: " -:*`\"'"))
+                    if !cleanAfter.isEmpty {
+                        blocks.append(MessageBlock(content: .text(afterText)))
+                    }
+                }
+                
+                i += 1
+                continue
+            }
+        }
+        
+        // 4. Check for Calendar Line or Calendar/Event reference
+        var isCalendarLine = false
+        var calendarTitle = "Calendar Event"
+        var calendarDay = "Upcoming Event"
+        var calendarLocation: String? = nil
+        var calendarTime: String? = nil
+        
+        if cleanedLine.hasPrefix("Event: ") || cleanedLine.hasPrefix("Calendar: ") {
+            isCalendarLine = true
+            let parsed = parseCalendarLine(line)
+            calendarTitle = parsed.title
+            calendarDay = parsed.day
+            calendarLocation = parsed.location
+            calendarTime = parsed.time
+        } else if cleanedLine.lowercased().contains("created a calendar event") || 
+                  cleanedLine.lowercased().contains("added an event to your calendar") ||
+                  cleanedLine.lowercased().contains("scheduled event") {
+            isCalendarLine = true
+            
+            if let firstQuote = cleanedLine.firstIndex(of: "\""), let lastQuote = cleanedLine.lastIndex(of: "\""), firstQuote != lastQuote {
+                calendarTitle = String(cleanedLine[cleanedLine.index(after: firstQuote)..<lastQuote])
+            } else if let firstQuote = cleanedLine.firstIndex(of: "'"), let lastQuote = cleanedLine.lastIndex(of: "'"), firstQuote != lastQuote {
+                calendarTitle = String(cleanedLine[cleanedLine.index(after: firstQuote)..<lastQuote])
+            }
+        } else if cleanedLine.contains("Event:") || cleanedLine.contains("Calendar:") || (cleanedLine.contains("Time:") && cleanedLine.contains("Location:")) || (cleanedLine.contains("Service appointment") && cleanedLine.contains("Tysons Corner")) {
+            isCalendarLine = true
+            let parsed = parseCalendarLine(line)
+            calendarTitle = parsed.title
+            calendarDay = parsed.day
+            calendarLocation = parsed.location
+            calendarTime = parsed.time
+        }
+        
+        if isCalendarLine {
+            blocks.append(MessageBlock(content: .calendar(day: calendarDay, title: calendarTitle, location: calendarLocation, time: calendarTime)))
+            i += 1
+            continue
+        }
+        
+        // 5. Check for Reminder Line or Reminder reference
+        var isReminderLine = false
+        var isCompleted = false
+        var reminderTitle = ""
+        let listName = "Inbox"
+        var reminderLocation: String? = nil
+        
+        if cleanedLine.hasPrefix("Reminder: ") {
+            isReminderLine = true
+            reminderTitle = String(cleanedLine.dropFirst("Reminder: ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if cleanedLine.hasPrefix("Task: ") {
+            isReminderLine = true
+            reminderTitle = String(cleanedLine.dropFirst("Task: ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if line.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("- [ ]") {
+            isReminderLine = true
+            isCompleted = false
+            reminderTitle = String(line.trimmingCharacters(in: .whitespacesAndNewlines).dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if line.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("- [x]") {
+            isReminderLine = true
+            isCompleted = true
+            reminderTitle = String(line.trimmingCharacters(in: .whitespacesAndNewlines).dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if cleanedLine.lowercased().contains("created a reminder") || 
+                  cleanedLine.lowercased().contains("created a location-based reminder") ||
+                  (cleanedLine.contains("Reminder: ") && cleanedLine.contains("List: ")) {
+            isReminderLine = true
+            
+            if let firstQuote = cleanedLine.firstIndex(of: "\""), let lastQuote = cleanedLine.lastIndex(of: "\""), firstQuote != lastQuote {
+                reminderTitle = String(cleanedLine[cleanedLine.index(after: firstQuote)..<lastQuote])
+            } else if let firstQuote = cleanedLine.firstIndex(of: "'"), let lastQuote = cleanedLine.lastIndex(of: "'"), firstQuote != lastQuote {
+                reminderTitle = String(cleanedLine[cleanedLine.index(after: firstQuote)..<lastQuote])
+            } else {
+                reminderTitle = "Reminder"
+            }
+            
+            if let locRange = cleanedLine.range(of: "location \"") {
+                let afterLoc = cleanedLine[locRange.upperBound...]
+                if let endQuote = afterLoc.firstIndex(of: "\"") {
+                    reminderLocation = String(afterLoc[..<endQuote])
+                }
+            } else if let locRange = cleanedLine.range(of: "location '") {
+                let afterLoc = cleanedLine[locRange.upperBound...]
+                if let endQuote = afterLoc.firstIndex(of: "'") {
+                    reminderLocation = String(afterLoc[..<endQuote])
+                }
+            }
+        }
+        
+        if isReminderLine && !reminderTitle.isEmpty {
+            let parts = line.components(separatedBy: " | ")
+            if parts.count > 1 {
+                let parsed = parseReminderLine(line)
+                blocks.append(MessageBlock(content: .reminder(title: parsed.title, listName: parsed.list, location: parsed.location, isCompleted: parsed.isCompleted)))
+            } else {
+                blocks.append(MessageBlock(content: .reminder(title: reminderTitle, listName: listName, location: reminderLocation, isCompleted: isCompleted)))
+            }
+            i += 1
+            continue
+        }
+        
+        // 6. Otherwise, treat as normal text line
+        if !blocks.isEmpty {
+            if case .text(let prevText) = blocks[blocks.count - 1].content {
+                let spacer = prevText.hasSuffix("\n") || prevText.isEmpty ? "" : "\n"
+                blocks[blocks.count - 1] = MessageBlock(content: .text(prevText + spacer + rawLine))
+                i += 1
+                continue
+            }
+        }
+        blocks.append(MessageBlock(content: .text(rawLine)))
+        i += 1
+    }
+    
+    return blocks.filter { block in
+        if case .text(let val) = block.content {
+            return !val.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return true
+    }
+}
+
+private func stripBullet(_ s: String) -> String {
+    var trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    let bulletPrefixes = ["- ", "* ", "• "]
+    for prefix in bulletPrefixes {
+        if trimmed.hasPrefix(prefix) {
+            trimmed = String(trimmed.dropFirst(prefix.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            break
+        }
+    }
+    if trimmed.hasPrefix("**") && trimmed.hasSuffix("**") {
+        trimmed = String(trimmed.dropFirst(2).dropLast(2)).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    return trimmed
+}
+
+private func parseMailLine(_ line: String) -> (subject: String, from: String, date: String, body: String?) {
+    var subject = ""
+    var from = ""
+    var date = ""
+    var body: String? = nil
+    
+    let parts = line.components(separatedBy: " | ")
+    for part in parts {
+        let trimmed = stripBullet(part)
+        if trimmed.hasPrefix("Subject: ") {
+            subject = String(trimmed.dropFirst("Subject: ".count))
+        } else if trimmed.hasPrefix("From: ") {
+            from = String(trimmed.dropFirst("From: ".count))
+        } else if trimmed.hasPrefix("Date: ") {
+            date = String(trimmed.dropFirst("Date: ".count))
+        } else if trimmed.hasPrefix("Body: ") {
+            body = String(trimmed.dropFirst("Body: ".count))
+        } else if trimmed.hasPrefix("Mailbox: ") {
+            let mailbox = String(trimmed.dropFirst("Mailbox: ".count))
+            if body == nil {
+                body = "Mailbox: \(mailbox)"
+            }
+        }
+    }
+    return (subject, from, date, body)
+}
+
+private func parseCalendarLine(_ line: String) -> (day: String, title: String, location: String?, time: String?) {
+    var day = "Upcoming Event"
+    var title = "Calendar Event"
+    var location: String? = nil
+    var time: String? = nil
+    
+    let parts = line.components(separatedBy: " | ")
+    for part in parts {
+        let trimmed = stripBullet(part)
+        if trimmed.hasPrefix("Event: ") {
+            let val = String(trimmed.dropFirst("Event: ".count))
+            if !val.isEmpty { day = val }
+        } else if trimmed.hasPrefix("Calendar: ") {
+            let val = String(trimmed.dropFirst("Calendar: ".count))
+            if !val.isEmpty { day = val }
+        } else if trimmed.hasPrefix("Title: ") {
+            title = String(trimmed.dropFirst("Title: ".count))
+        } else if trimmed.hasPrefix("Summary: ") {
+            title = String(trimmed.dropFirst("Summary: ".count))
+        } else if trimmed.hasPrefix("Location: ") {
+            location = String(trimmed.dropFirst("Location: ".count))
+        } else if trimmed.hasPrefix("Time: ") {
+            time = String(trimmed.dropFirst("Time: ".count))
+        }
+    }
+    if parts.count == 1 {
+        if line.contains(": ") {
+            let leftRight = line.components(separatedBy: ": ")
+            if leftRight.count >= 2 {
+                title = leftRight[1...].joined(separator: ": ")
+                let left = leftRight[0]
+                if left.contains(" - ") {
+                    let timesAndDays = left.components(separatedBy: " - ")
+                    if timesAndDays.count >= 2 {
+                        day = timesAndDays[0]
+                        time = timesAndDays[1]
                     } else {
                         day = left
                     }
+                } else {
+                    day = left
                 }
             }
         }
-        return (day, title, location, time)
     }
+    return (day, title, location, time)
+}
 
-    private func parseReminderLine(_ line: String) -> (title: String, list: String, location: String?, isCompleted: Bool) {
-        var title = "Reminder"
-        var list = "Inbox"
-        var location: String? = nil
-        var isCompleted = false
-        
-        let parts = line.components(separatedBy: " | ")
-        for part in parts {
-            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("Reminder: ") {
-                title = String(trimmed.dropFirst("Reminder: ".count))
-            } else if trimmed.hasPrefix("Task: ") {
-                title = String(trimmed.dropFirst("Task: ".count))
-            } else if trimmed.hasPrefix("List: ") {
-                list = String(trimmed.dropFirst("List: ".count))
-            } else if trimmed.hasPrefix("Location: ") {
-                location = String(trimmed.dropFirst("Location: ".count))
-            } else if trimmed.hasPrefix("Status: ") {
-                let statusVal = String(trimmed.dropFirst("Status: ".count)).lowercased()
-                isCompleted = (statusVal == "done" || statusVal == "completed" || statusVal == "true")
-            }
+private func parseReminderLine(_ line: String) -> (title: String, list: String, location: String?, isCompleted: Bool) {
+    var title = "Reminder"
+    var list = "Inbox"
+    var location: String? = nil
+    var isCompleted = false
+    
+    let parts = line.components(separatedBy: " | ")
+    for part in parts {
+        let trimmed = stripBullet(part)
+        if trimmed.hasPrefix("Reminder: ") {
+            title = String(trimmed.dropFirst("Reminder: ".count))
+        } else if trimmed.hasPrefix("Task: ") {
+            title = String(trimmed.dropFirst("Task: ".count))
+        } else if trimmed.hasPrefix("List: ") {
+            list = String(trimmed.dropFirst("List: ".count))
+        } else if trimmed.hasPrefix("Location: ") {
+            location = String(trimmed.dropFirst("Location: ".count))
+        } else if trimmed.hasPrefix("Status: ") {
+            let statusVal = String(trimmed.dropFirst("Status: ".count)).lowercased()
+            isCompleted = (statusVal == "done" || statusVal == "completed" || statusVal == "true")
         }
-        if parts.count == 1 {
-            var cleanLine = line
-            if cleanLine.hasPrefix("- [x]") {
-                isCompleted = true
-                cleanLine = String(cleanLine.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
-            } else if cleanLine.hasPrefix("- [ ]") {
-                isCompleted = false
-                cleanLine = String(cleanLine.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    if parts.count == 1 {
+        var cleanLine = line
+        if cleanLine.hasPrefix("- [x]") {
+            isCompleted = true
+            cleanLine = String(cleanLine.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+        } else if cleanLine.hasPrefix("- [ ]") {
+            isCompleted = false
+            cleanLine = String(cleanLine.dropFirst(5)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if cleanLine.contains("(") && cleanLine.hasSuffix(")") {
+            if let openParen = cleanLine.firstIndex(of: "(") {
+                let loc = String(cleanLine[openParen...]).trimmingCharacters(in: CharacterSet(charactersIn: "()"))
+                if loc.lowercased().contains("arriving") || loc.lowercased().contains("leaving") {
+                    location = loc
+                }
+                title = String(cleanLine[..<openParen]).trimmingCharacters(in: .whitespacesAndNewlines)
             }
-            if cleanLine.contains("(") && cleanLine.hasSuffix(")") {
-                if let openParen = cleanLine.firstIndex(of: "(") {
-                    let loc = String(cleanLine[openParen...]).trimmingCharacters(in: CharacterSet(charactersIn: "()"))
-                    if loc.lowercased().contains("arriving") || loc.lowercased().contains("leaving") {
-                        location = loc
+        } else {
+            title = cleanLine
+        }
+    }
+    return (title, list, location, isCompleted)
+}
+
+private func parseFileLine(_ line: String) -> (path: String, filename: String, url: URL, details: [String: String], workPerformed: [String]) {
+    var path = ""
+    var details: [String: String] = [:]
+    var workPerformed: [String] = []
+    
+    let parts = line.components(separatedBy: " | ")
+    for part in parts {
+        let trimmed = stripBullet(part)
+        if trimmed.hasPrefix("Path: ") {
+            path = String(trimmed.dropFirst("Path: ".count))
+        } else if trimmed.hasPrefix("Details: ") {
+            let detailsStr = String(trimmed.dropFirst("Details: ".count))
+            let pairs = detailsStr.components(separatedBy: ";")
+            for pair in pairs {
+                let kv = pair.components(separatedBy: ":")
+                if kv.count >= 2 {
+                    let k = kv[0].trimmingCharacters(in: .whitespacesAndNewlines)
+                    let v = kv[1...].joined(separator: ":").trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !k.isEmpty && !v.isEmpty {
+                        details[k] = v
                     }
-                    title = String(cleanLine[..<openParen]).trimmingCharacters(in: .whitespacesAndNewlines)
                 }
-            } else {
-                title = cleanLine
             }
+        } else if trimmed.hasPrefix("Work: ") {
+            let workStr = String(trimmed.dropFirst("Work: ".count))
+            workPerformed = workStr.components(separatedBy: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         }
-        return (title, list, location, isCompleted)
     }
-
-    private func parseFileLine(_ line: String) -> (path: String, filename: String, url: URL, details: [String: String], workPerformed: [String]) {
-        var path = ""
-        var details: [String: String] = [:]
-        var workPerformed: [String] = []
-        
-        let parts = line.components(separatedBy: " | ")
-        for part in parts {
-            let trimmed = part.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.hasPrefix("Path: ") {
-                path = String(trimmed.dropFirst("Path: ".count))
-            } else if trimmed.hasPrefix("Details: ") {
-                let detailsStr = String(trimmed.dropFirst("Details: ".count))
-                let pairs = detailsStr.components(separatedBy: ";")
-                for pair in pairs {
-                    let kv = pair.components(separatedBy: ":")
-                    if kv.count >= 2 {
-                        let k = kv[0].trimmingCharacters(in: .whitespacesAndNewlines)
-                        let v = kv[1...].joined(separator: ":").trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !k.isEmpty && !v.isEmpty {
-                            details[k] = v
-                        }
-                    }
-                }
-            } else if trimmed.hasPrefix("Work: ") {
-                let workStr = String(trimmed.dropFirst("Work: ".count))
-                workPerformed = workStr.components(separatedBy: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-            }
-        }
-        if path.isEmpty && line.hasPrefix("Path: ") {
-            path = String(line.dropFirst("Path: ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        let url = URL(fileURLWithPath: path)
-        let filename = url.lastPathComponent.isEmpty ? "document" : url.lastPathComponent
-        return (path, filename, url, details, workPerformed)
+    if path.isEmpty && line.hasPrefix("Path: ") {
+        path = String(line.dropFirst("Path: ".count)).trimmingCharacters(in: .whitespacesAndNewlines)
     }
-
-    private var isMailLine: Bool { line.contains("Subject:") && line.contains("From:") }
-    private var isCalendarLine: Bool {
-        line.contains("Event:") || line.contains("Calendar:") || (line.contains("Time:") && line.contains("Location:")) || (line.contains("Service appointment") && line.contains("Tysons Corner"))
-    }
-    private var isReminderLine: Bool {
-        line.hasPrefix("Reminder: ") || line.hasPrefix("Task: ") || line.contains("Reminder: ") || (line.contains("Inbox") && line.contains("Withdraw")) || line.lowercased().contains("reminder")
-    }
-    private var isFileLine: Bool { line.hasPrefix("Path: ") }
-
-    private var icon: String {
-        if isMailLine { return "envelope" }
-        if isReminderLine { return "checklist" }
-        if line.lowercased().contains("blocked") { return "hand.raised" }
-        return "circle.fill"
-    }
-
-    private var iconColor: Color {
-        if line.lowercased().contains("blocked") { return .orange }
-        return .secondary
-    }
+    let url = URL(fileURLWithPath: path)
+    let filename = url.lastPathComponent.isEmpty ? "document" : url.lastPathComponent
+    return (path, filename, url, details, workPerformed)
 }
 
 struct MailCard: View {
@@ -565,8 +881,8 @@ struct MailCard: View {
             
             HStack(spacing: 8) {
                 Button(action: {
-                    if let url = URL(string: "message://") {
-                        NSWorkspace.shared.open(url)
+                    if let mailURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.mail") {
+                        NSWorkspace.shared.open(mailURL)
                     } else {
                         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Mail.app"))
                     }
@@ -1054,5 +1370,43 @@ struct StatusPill: View {
         .padding(.vertical, 5)
         .background((running ? Color.orange : Theme.electricCyan).opacity(0.14))
         .clipShape(Capsule())
+    }
+}
+
+struct RoleBadge: View {
+    let role: ChatMessage.Role
+
+    var body: some View {
+        ZStack {
+            Circle().fill(background)
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(foreground)
+        }
+        .frame(width: 28, height: 28)
+    }
+
+    private var icon: String {
+        switch role {
+        case .user: return "person.fill"
+        case .assistant: return "sparkles"
+        case .system: return "checkmark.seal.fill"
+        }
+    }
+
+    private var background: Color {
+        switch role {
+        case .user: return Color.accentColor.opacity(0.16)
+        case .assistant: return Color.primary.opacity(0.10)
+        case .system: return Color.blue.opacity(0.12)
+        }
+    }
+
+    private var foreground: Color {
+        switch role {
+        case .user: return .accentColor
+        case .assistant: return .primary
+        case .system: return .blue
+        }
     }
 }
