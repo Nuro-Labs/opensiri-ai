@@ -14,6 +14,10 @@ final class HotKeyManager {
         InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
             DispatchQueue.main.async {
                 NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.title == "OpenSiri" || window.title == "opensiri-ai" {
+                    window.makeKeyAndOrderFront(nil)
+                    window.orderFrontRegardless()
+                }
                 NotificationCenter.default.post(name: .centerOpenSiriWindow, object: nil)
                 NotificationCenter.default.post(name: .focusPalette, object: nil)
             }

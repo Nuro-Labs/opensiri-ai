@@ -1,7 +1,17 @@
+import AppKit
 import SwiftUI
+
+final class OpenSiriAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+    }
+}
 
 @main
 struct OpenSiriAIApp: App {
+    @NSApplicationDelegateAdaptor(OpenSiriAppDelegate.self) private var appDelegate
     @State private var state = AppState()
 
     init() {

@@ -1,17 +1,19 @@
 import AppKit
 import SwiftUI
 
+@MainActor final class OpenSiriWindowDelegate: NSObject, NSWindowDelegate {
+    static let shared = OpenSiriWindowDelegate()
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
+}
+
 struct FloatingWindowConfigurator: NSViewRepresentable {
     let expanded: Bool
 
-    class Coordinator: NSObject, NSWindowDelegate {
-        var lastExpandedState: Bool? = nil
-
-        func windowShouldClose(_ sender: NSWindow) -> Bool {
-            sender.orderOut(nil)
-            return false
-        }
-    }
+    class Coordinator: NSObject { var lastExpandedState: Bool? = nil }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -35,7 +37,7 @@ struct FloatingWindowConfigurator: NSViewRepresentable {
 
     private func configureWindow(_ window: NSWindow, coordinator: Coordinator) {
         window.title = "OpenSiri"
-        window.delegate = coordinator
+        window.delegate = OpenSiriWindowDelegate.shared
         window.titleVisibility = .visible
         window.titlebarAppearsTransparent = false
         window.styleMask.remove(.fullSizeContentView)
