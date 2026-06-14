@@ -92,6 +92,27 @@ To stay perfectly aligned with Apple's latest **Siri AI (WWDC 2026)** paradigm, 
 
 ---
 
+## ⚖️ Comparison: OpenSiri-AI vs. Siri AI
+
+Yes, **OpenSiri-AI** is designed to replicate Siri AI's core personal intelligence capabilities, with the exception of the upcoming roadmap items (such as Visual Camera OCR and Spatial visionOS Coordination). However, OpenSiri-AI offers several critical architectural advantages that make it superior for power users, developers, and privacy-conscious users:
+
+### Where OpenSiri-AI is Better
+
+1.  **🔒 100% Local-Only Execution**
+    *   **Siri AI:** Silently offloads high-reasoning tasks to Private Cloud Compute (PCC) servers or external partner APIs (like Google Gemini) over the network.
+    *   **OpenSiri-AI:** Runs entirely locally on your Apple Silicon hardware via high-speed, local MLX quantization models (`eliot-9b-v12-mlx-4bit` on port `8081`). No data ever leaves your machine, making it completely offline and private.
+2.  **🛡️ Auditable Sandbox & Payload Inspection**
+    *   **Siri AI:** Operates as a black box—taking actions, accessing local databases, or making API calls silently without letting you review the exact command payload.
+    *   **OpenSiri-AI:** Features a highly deterministic safety policy router. Every single command is outputted in transparent JSON, allowing you to run in a strict, fail-closed sandboxed mode (`DenyAllApproval`) or interactively inspect, approve, or reject the raw proposed shell script/AppleScript before execution.
+3.  **🔌 Infinite Developer Extensibility**
+    *   **Siri AI:** Restricted strictly to official, system-sanctioned App Intents compiled into the developer SDK, completely locking out CLI utilities, legacy databases, or custom developer workflows.
+    *   **OpenSiri-AI:** Allows developers to write custom Python connector blocks in under 15 lines of code, enabling Siri to coordinate with internal developer scripts, shell tools, or proprietary local services.
+4.  **💻 Developer & CLI Workflow Native**
+    *   **Siri AI:** Geared entirely towards consumer use cases (e.g. system settings, messages, calendars, notes). It cannot interact with code repositories, terminal sessions, or compilation toolchains.
+    *   **OpenSiri-AI:** Extremely powerful for developer environments. It can easily run git commands, coordinate local pytest environments, format source files, and manage developer tooling under safe policy constraints.
+
+---
+
 ## 🚀 Quickstart & Setup
 
 ### Requirements
