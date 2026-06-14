@@ -30,6 +30,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>NSHumanReadableCopyright</key><string>Copyright 2026 Nuro AI Labs</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>NSQuitAlwaysKeepsWindows</key><false/>
 </dict>
 </plist>
 PLIST
