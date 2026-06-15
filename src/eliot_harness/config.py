@@ -19,8 +19,8 @@ class SourceConfig:
 
 @dataclass
 class HarnessConfig:
-    model_url: str = "http://127.0.0.1:8081"
-    model_name: str = "default_model"
+    model_url: str = "https://hypersave-resource.services.ai.azure.com/openai/v1/chat/completions"
+    model_name: str = "grok-4.3"
     audit_path: str = "~/.local/share/opensiri-ai/audit.jsonl"
     transcript_dir: str = "~/.local/share/opensiri-ai/transcripts"
     network_enabled: bool = False

@@ -59,7 +59,7 @@ final class AppState {
     ]
     var status: String = "Idle"
     var modelURL: String = AppState.initialModelURL()
-    var modelName: String = UserDefaults.standard.string(forKey: "modelName") ?? "default_model"
+    var modelName: String = AppState.initialModelName()
     var visionModelURL: String = UserDefaults.standard.string(forKey: "visionModelURL") ?? ""
     var visionModelName: String = UserDefaults.standard.string(forKey: "visionModelName") ?? ""
     var analysisModelURL: String = UserDefaults.standard.string(forKey: "analysisModelURL") ?? ""
@@ -159,9 +159,17 @@ final class AppState {
 
     static func initialModelURL() -> String {
         guard let saved = UserDefaults.standard.string(forKey: "modelURL"), !saved.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return "http://127.0.0.1:8081"
+            return "https://hypersave-resource.services.ai.azure.com/openai/v1/chat/completions"
         }
-        return saved == "http://localhost:8081" ? "http://127.0.0.1:8081" : saved
+        if saved == "http://localhost:8081" || saved == "http://127.0.0.1:8081" {
+            return "https://hypersave-resource.services.ai.azure.com/openai/v1/chat/completions"
+        }
+        return saved
+    }
+
+    static func initialModelName() -> String {
+        let saved = UserDefaults.standard.string(forKey: "modelName") ?? ""
+        return saved.isEmpty || saved == "default_model" ? "grok-4.3" : saved
     }
 
     static func detectRepoRoot() -> String {

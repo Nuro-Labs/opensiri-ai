@@ -44,7 +44,7 @@ class ContactsConnector(Connector):
         script = f'''
 set queryText to {q(query)}
 set maxItems to {limit}
-set lines to {{}}
+set contactLines to {{}}
 tell application "Contacts"
     set matches to people whose name contains queryText
     set itemCount to 0
@@ -63,19 +63,21 @@ tell application "Contacts"
         set emailText to emailItems as text
         set phoneText to phoneItems as text
         set AppleScript's text item delimiters to ""
-        set end of lines to personName & " | emails: " & emailText & " | phones: " & phoneText
+        set end of contactLines to personName & " | emails: " & emailText & " | phones: " & phoneText
         set itemCount to itemCount + 1
     end repeat
 end tell
 set AppleScript's text item delimiters to linefeed
-set out to lines as text
+set out to contactLines as text
 set AppleScript's text item delimiters to ""
 return out
 '''
-        got = run_osa(script, timeout=45)
+        got = run_osa(script, timeout=10)
         if got.startswith("error"):
             return [ConnectorResult(f"Contacts unavailable for {query}: {got}", {"source": self.source, "query": query})]
-        lines = [line for line in got.splitlines() if line.strip()]
+        if got.strip().lower() == "ok":
+            return [ConnectorResult(f"No contacts matching {query}.", {"source": self.source, "query": query, "count": 0})]
+        lines = [line for line in got.splitlines() if line.strip() and line.strip().lower() != "ok"]
         if not lines:
             return [ConnectorResult(f"No contacts matching {query}.", {"source": self.source, "query": query, "count": 0})]
         return [ConnectorResult(f"Contact match for {query}: {line}", {"source": self.source, "query": query}) for line in lines[:limit]]

@@ -1,4 +1,4 @@
-"""Canonical Eliot tool schema and observation helpers."""
+"""Canonical tool schema and observation helpers."""
 
 from __future__ import annotations
 
@@ -7,13 +7,17 @@ from typing import Any, Literal
 
 
 ActionName = Literal[
-    "applescript",
-    "run_shell",
-    "read_file",
-    "write_file",
-    "web_search",
-    "ask_user",
-    "done",
+    "open_app", "run_shell", "read_file", "write_file",
+    "web_search", "memory_search", "memory_ask", "memory_save",
+    "local_search", "mail_search", "mail_draft", "mail_send", "mail_action",
+    "messages_search", "message_draft", "message_send",
+    "file_search", "file_analyze",
+    "reminders_list", "reminders_create", "reminders_complete",
+    "calendar_free_busy", "contacts_resolve",
+    "browser_open_url", "browser_history_search", "browser_tabs", "browser_open_downloads",
+    "browser_open_youtube_liked", "browser_play_last_youtube", "browser_play_youtube", "browser_close_tab",
+    "system_control", "finder_action", "mac_tool",
+    "ask_user", "done", "applescript",
 ]
 
 
@@ -31,118 +35,34 @@ def make_observation(task: str, app: str, ui_tree: str, result: str, context: st
     return "\n".join(parts)
 
 
-TOOLS = [
-    "applescript",
-    "run_shell",
-    "read_file",
-    "write_file",
-    "web_search",
-    "ask_user",
-    "done",
-]
+TOOLS = list(ActionName.__args__)  # type: ignore[attr-defined]
+
+
+def tool(name: str, description: str, props: dict[str, Any], required: list[str] | None = None) -> dict[str, Any]:
+    return {"type": "function", "function": {"name": name, "description": description, "parameters": {"type": "object", "properties": props, "required": required or []}}}
 
 
 OPENAI_TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "applescript",
-            "description": "Run any custom AppleScript on the Mac to query and automate native macOS apps (such as Mail, Messages, Notes, Reminders, Calendar, Contacts, Finder, Safari, or System Preferences) natively and dynamically.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "script": {"type": "string", "description": "The exact AppleScript code block to execute."}
-                },
-                "required": ["script"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "run_shell",
-            "description": "Run a local shell command (zsh/bash) through the harness. Use this for file system checks, running python scripts, or inspecting shell output.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "cmd": {"type": "string", "description": "The shell command string to run."}
-                },
-                "required": ["cmd"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "read_file",
-            "description": "Read the contents of a local text file on the system.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "The absolute path of the file to read."}
-                },
-                "required": ["path"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "write_file",
-            "description": "Create a new text file or overwrite an existing file with the specified contents.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "path": {"type": "string", "description": "The absolute path of the file to write to."},
-                    "content": {"type": "string", "description": "The text content to write into the file."}
-                },
-                "required": ["path", "content"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "web_search",
-            "description": "Use bounded harness web search to fetch live or general information from the web.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "The web search query."},
-                    "max_results": {"type": "integer", "description": "The maximum number of search results to return."}
-                },
-                "required": ["query"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "ask_user",
-            "description": "Ask the user for clarification, input, or confirmation.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "question": {"type": "string", "description": "The question or confirmation prompt to show to the user."}
-                },
-                "required": ["question"],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "done",
-            "description": "Finish the task and present the final elegant answer or summary to the user.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "summary": {"type": "string", "description": "The final detailed, perfect answer or summary of actions performed to show to the user."}
-                },
-                "required": ["summary"],
-            },
-        },
-    },
+    tool("mail_search", "Fast backend Mail search. Use for email queries before any AppleScript.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("file_analyze", "Find and summarize/analyze a local file from allowed roots. Use for 'what is this paper/file about'.", {"query": {"type": "string"}, "question": {"type": "string"}, "path": {"type": "string"}}, ["query"]),
+    tool("file_search", "Fast file search across allowed roots and local index.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("local_search", "Search local background index across files, mail, notes, messages, and memory snippets.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("messages_search", "Fast read-only local Messages search.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("calendar_free_busy", "Check Calendar availability/events for a day or time.", {"day": {"type": "string"}, "time_text": {"type": "string"}}),
+    tool("reminders_list", "List reminders read-only.", {"limit": {"type": "integer"}}),
+    tool("reminders_create", "Create a reminder when reminder write permission is enabled.", {"text": {"type": "string"}}, ["text"]),
+    tool("contacts_resolve", "Resolve contact names without dumping all contacts.", {"name": {"type": "string"}, "limit": {"type": "integer"}}, ["name"]),
+    tool("browser_history_search", "Search Chrome browser history read-only.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("browser_play_last_youtube", "Open the most recently watched YouTube video from browser history.", {}),
+    tool("browser_open_url", "Open URL in browser. Requires approval/write permission.", {"url": {"type": "string"}, "browser": {"type": "string"}}, ["url"]),
+    tool("system_control", "Read or change system controls. Non-status actions require approval.", {"action": {"type": "string"}, "level": {"type": "integer"}, "enabled": {"type": "boolean"}}, ["action"]),
+    tool("memory_search", "Search Hypersave memory if enabled.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
+    tool("memory_ask", "Ask Hypersave memory if enabled.", {"query": {"type": "string"}}, ["query"]),
+    tool("memory_save", "Save memory; requires approval.", {"content": {"type": "string"}, "source": {"type": "string"}, "sensitivity": {"type": "string"}}, ["content", "source"]),
+    tool("open_app", "Open/foreground a macOS app.", {"name": {"type": "string"}}, ["name"]),
+    tool("web_search", "Use bounded web search for live/current facts.", {"query": {"type": "string"}, "max_results": {"type": "integer"}}, ["query"]),
+    tool("ask_user", "Ask for clarification or approval.", {"question": {"type": "string"}}, ["question"]),
+    tool("done", "Finish with final answer.", {"summary": {"type": "string"}}, ["summary"]),
 ]
 
 

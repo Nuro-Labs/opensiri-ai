@@ -51,8 +51,8 @@ class MailConnector(Connector):
         results: list[ConnectorResult] = []
         seen: set[str] = set()
         for batch in (
-            self._applescript_metadata_search(terms, days=days, scan_limit=scan_limit, limit=limit),
             self._applescript_recent_scan_search(terms, scan_limit=scan_limit, limit=limit),
+            self._applescript_metadata_search(terms, days=days, scan_limit=scan_limit, limit=limit),
             self.spotlight_search(query, limit=limit),
             self.emlx_search(query, limit=max(limit, 20)),
         ):
@@ -88,7 +88,7 @@ repeat with box in mailboxes
 end repeat
 return out
 end tell'''
-        out = run_osa(script, timeout=20)
+        out = run_osa(script, timeout=4)
         rows = self._split_results(out, "mail_search_scan")
         ranked: list[tuple[int, ConnectorResult]] = []
         for row in rows:
@@ -100,7 +100,7 @@ end tell'''
         return [r for _, r in ranked[:limit]]
 
     def _applescript_recent_scan_search(self, terms: list[str], scan_limit: int = 120, limit: int = 10) -> list[ConnectorResult]:
-        scan_limit = max(1, min(scan_limit, 250))
+        scan_limit = max(1, min(scan_limit, 40))
         limit = max(1, min(limit, 25))
         script = '''tell application "Mail"
 set out to {}
@@ -112,7 +112,7 @@ repeat with m in msgs
 end repeat
 return out
 end tell'''
-        out = run_osa(script, timeout=35)
+        out = run_osa(script, timeout=4)
         rows = self._split_results(out, "mail_recent_scan")
         ranked: list[tuple[int, ConnectorResult]] = []
         for row in rows:
@@ -293,7 +293,7 @@ end tell'''
         if not out or out.startswith("error"):
             return []
         rows = [x.strip() for x in out.replace(", Subject:", "\nSubject:").splitlines() if x.strip()]
-        return [ConnectorResult(row[:1200], {"source": self.source, "kind": kind}) for row in rows[: max(self.max_context_items, 20)]]
+        return [ConnectorResult(row[:1200], {"source": self.source, "kind": kind}) for row in rows[: max(self.max_context_items, 300)]]
 
     def draft_email(self, to: str, subject: str, body: str, dry_run: bool = True) -> ConnectorResult:
         if dry_run or not self.can_write:
