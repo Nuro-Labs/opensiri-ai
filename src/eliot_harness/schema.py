@@ -17,6 +17,7 @@ ActionName = Literal[
     "browser_open_url", "browser_history_search", "browser_tabs", "browser_open_downloads",
     "browser_open_youtube_liked", "browser_play_last_youtube", "browser_play_youtube", "browser_close_tab",
     "system_control", "finder_action", "mac_tool",
+    "propose_tool",
     "ask_user", "done", "applescript",
 ]
 
@@ -50,12 +51,14 @@ OPENAI_TOOLS = [
     tool("messages_search", "Fast read-only local Messages search.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
     tool("calendar_free_busy", "Check Calendar availability/events for a day or time.", {"day": {"type": "string"}, "time_text": {"type": "string"}}),
     tool("reminders_list", "List reminders read-only.", {"limit": {"type": "integer"}}),
-    tool("reminders_create", "Create a reminder when reminder write permission is enabled.", {"text": {"type": "string"}}, ["text"]),
+    tool("reminders_create", "Create a reminder when reminder write permission is enabled. Use due_text for natural due dates such as 'tomorrow at 9am' or 'Friday 3pm'.", {"text": {"type": "string"}, "due_text": {"type": "string"}}, ["text"]),
     tool("contacts_resolve", "Resolve contact names without dumping all contacts.", {"name": {"type": "string"}, "limit": {"type": "integer"}}, ["name"]),
     tool("browser_history_search", "Search Chrome browser history read-only.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
     tool("browser_play_last_youtube", "Open the most recently watched YouTube video from browser history.", {}),
     tool("browser_open_url", "Open URL in browser. Requires approval/write permission.", {"url": {"type": "string"}, "browser": {"type": "string"}}, ["url"]),
     tool("system_control", "Read or change system controls. Non-status actions require approval.", {"action": {"type": "string"}, "level": {"type": "integer"}, "enabled": {"type": "boolean"}}, ["action"]),
+    tool("mac_tool", "Dispatch one of the 487 cataloged Mac capabilities by id. Use when a catalog capability exists but no dedicated tool name is exposed.", {"id": {"type": "string"}, "args": {"type": "object"}}, ["id"]),
+    tool("propose_tool", "Use only when no available tool can satisfy the user's request. Propose the missing connector/tool design; do not pretend it executed.", {"name": {"type": "string"}, "purpose": {"type": "string"}, "inputs": {"type": "object"}, "safety": {"type": "string"}}, ["name", "purpose"]),
     tool("memory_search", "Search Hypersave memory if enabled.", {"query": {"type": "string"}, "limit": {"type": "integer"}}, ["query"]),
     tool("memory_ask", "Ask Hypersave memory if enabled.", {"query": {"type": "string"}}, ["query"]),
     tool("memory_save", "Save memory; requires approval.", {"content": {"type": "string"}, "source": {"type": "string"}, "sensitivity": {"type": "string"}}, ["content", "source"]),

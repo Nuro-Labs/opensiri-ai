@@ -107,6 +107,13 @@ def test_model_does_not_show_partial_tool_call():
     assert client._parse_action({"content": "<tool_call>"}) is None
 
 
+def test_propose_tool_executor():
+    from eliot_harness.executor import Executor
+    from eliot_harness.schema import Action
+    out = Executor().execute(Action("propose_tool", {"name": "tv.resume", "purpose": "Resume Apple TV playback"})).output
+    assert "No action was executed" in out and "tv.resume" in out
+
+
 def test_memory_connector_handles_missing_client():
     from eliot_harness.connectors.memory import MemoryConnector
     c = MemoryConnector(None)
@@ -148,6 +155,7 @@ def test_app_connectors_dry_run_writes():
     from eliot_harness.connectors.calendar import CalendarConnector
     assert "DRY RUN" in NotesConnector().create_note("T", "B").text
     assert "DRY RUN" in RemindersConnector().add_reminder("Water plant").text
+    assert "due" in RemindersConnector().add_reminder("Reply tomorrow at 9am").text
     assert "DRY RUN" in CalendarConnector().create_event("Meeting").text
 
 

@@ -139,7 +139,7 @@ class Executor:
         if name == "reminders_list":
             return ExecutionResult(self._reminders_list(int(args.get("limit", 20))), terminal=False)
         if name == "reminders_create":
-            return ExecutionResult(self.reminders.add_reminder(str(args.get("text", "")), dry_run=not self.reminders.can_write).text, terminal=False)
+            return ExecutionResult(self.reminders.add_reminder(str(args.get("text", "")), str(args.get("due_text", "")), dry_run=not self.reminders.can_write).text, terminal=False)
         if name == "reminders_complete":
             return ExecutionResult(self.reminders.complete_reminder(str(args.get("text", "")), dry_run=not self.reminders.can_write).text, terminal=False)
         if name == "calendar_free_busy":
@@ -170,6 +170,8 @@ class Executor:
             return ExecutionResult(self.browser.play_first_visible_youtube_video(dry_run=False).text)
         if name == "system_control":
             return ExecutionResult(self.system.execute(str(args.get("action", "status")), args).text, terminal=True)
+        if name == "propose_tool":
+            return ExecutionResult(self._propose_tool(args), terminal=True)
         if name == "finder_action":
             return ExecutionResult(self._finder_action(args).text, terminal=True)
         if name == "mac_tool":
@@ -265,6 +267,20 @@ class Executor:
             return "reminders access not enabled"
         return "\n".join(r.text for r in self.reminders.read_context("reminders")[:limit]) or "no reminders found"
 
+    def _propose_tool(self, args: dict) -> str:
+        name = str(args.get("name", "missing_tool")).strip() or "missing_tool"
+        purpose = str(args.get("purpose", "No purpose provided")).strip()
+        safety = str(args.get("safety", "Requires review before implementation")).strip()
+        inputs = args.get("inputs") if isinstance(args.get("inputs"), dict) else {}
+        return (
+            "Tool not available yet. Proposed connector/tool:\n"
+            f"- name: {name}\n"
+            f"- purpose: {purpose}\n"
+            f"- inputs: {inputs}\n"
+            f"- safety: {safety}\n"
+            "No action was executed."
+        )
+
     def _mac_tool(self, tool_id: str, args: dict) -> ExecutionResult:
         if tool_id == "catalog.list":
             return ExecutionResult(catalog_summary(), terminal=True)
@@ -290,7 +306,7 @@ class Executor:
             "memory.ask": lambda: self.execute(Action("memory_ask", {"query": args.get("query", "")})),
             "memory.save": lambda: self.execute(Action("memory_save", {"content": args.get("content", ""), "source": args.get("source", "mac_tool")})),
             "reminders.list": lambda: self.execute(Action("reminders_list", {"limit": args.get("limit", 20)})),
-            "reminders.create": lambda: self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}})),
+            "reminders.create": lambda: self.execute(Action("reminders_create", {"text": args.get("text", args.get("title", "")), "due_text": args.get("due_text", "")})),
             "notes.create": lambda: self.execute(Action("invoke_intent", {"app": "Notes", "intent": "CreateNote", "params": {"title": args.get("title", "Untitled"), "body": args.get("body", "")}})),
             "notes.append": lambda: ExecutionResult(self.notes.append_note(args.get("title", "Untitled"), args.get("body", args.get("text", "")), dry_run=not self.notes.can_write).text, terminal=True),
             "notes.folder": lambda: self.execute(Action("local_search", {"query": args.get("query", "notes folder"), "limit": args.get("limit", 8)})),
@@ -366,7 +382,7 @@ class Executor:
         if category == "reminders" and verb == "list":
             return self.execute(Action("reminders_list", {"limit": args.get("limit", 20)}))
         if category == "reminders" and verb == "create":
-            return self.execute(Action("invoke_intent", {"app": "Reminders", "intent": "AddReminder", "params": {"text": args.get("text", args.get("title", ""))}}))
+            return self.execute(Action("reminders_create", {"text": args.get("text", args.get("title", "")), "due_text": args.get("due_text", "")}))
         if category == "reminders" and verb == "complete":
             return ExecutionResult(self.reminders.complete_reminder(str(args.get("text", args.get("title", ""))), dry_run=not self.reminders.can_write).text, terminal=True)
         if category == "reminders" and verb in {"schedule", "location", "priority", "tag", "move"}:
